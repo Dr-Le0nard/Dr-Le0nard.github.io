@@ -15,39 +15,59 @@
     </nav>
 
     <div id="article-list">
-        <p>SCANNING_DATABASE...</p>
+        <p id="status-msg">SCANNING_DATABASE...</p>
     </div>
 
     <script>
-        console.log("SYSTEM_CHECK: ARCHIVE_SCRIPT_INITIATED");
+        // Force immediate execution check
+        console.log("SYSTEM_CHECK: SCRIPT_START");
+
         async function loadArchive() {
-            // Check auth first
-            const { data: { user } } = await _supabase.auth.getUser();
-            if (!user) { window.location.href = "index.html"; return; }
+            const status = document.getElementById('status-msg');
+            
+            try {
+                console.log("SYSTEM_CHECK: ATTEMPTING_DB_CONNECTION");
+                
+                // 1. Verify _supabase exists
+                if (typeof _supabase === 'undefined') {
+                    throw new Error("SUPABASE_CLIENT_NOT_DEFINED - Check config.js");
+                }
 
-            // Fetch data
-            const { data: articles, error } = await _supabase
-                .from('articles')
-                .select('id, title, profiles(full_name)')
-                .order('created_at', { ascending: false });
+                // 2. Fetch data
+                const { data: articles, error } = await _supabase
+                    .from('articles')
+                    .select('id, title, profiles(full_name)')
+                    .order('created_at', { ascending: false });
 
-            const listDiv = document.getElementById('article-list');
-            listDiv.innerHTML = ""; // Clear the 'scanning' message
+                if (error) throw error;
 
-            if (error) {
-                listDiv.innerHTML = "<p>ERROR: UNABLE_TO_REACH_DATABASE</p>";
-                return;
+                console.log("SYSTEM_CHECK: DATA_RECEIVED", articles);
+
+                const listDiv = document.getElementById('article-list');
+                listDiv.innerHTML = ""; 
+
+                if (!articles || articles.length === 0) {
+                    listDiv.innerHTML = "<p>NO_RECORDS_FOUND_IN_ARCHIVE</p>";
+                    return;
+                }
+
+                articles.forEach(art => {
+                    const author = art.profiles ? art.profiles.full_name : "UNKNOWN_AUTHOR";
+                    listDiv.innerHTML += `
+                        <div class="scp-card">
+                            <a href="viewer.html?id=${art.id}">${art.title}</a>
+                            <small>FILED_BY: ${author}</small>
+                        </div>`;
+                });
+
+            } catch (err) {
+                console.error("SYSTEM_FAILURE:", err);
+                status.innerText = "CRITICAL_ERROR: " + err.message;
             }
-
-            articles.forEach(art => {
-                listDiv.innerHTML += `
-                    <div class="scp-card">
-                        <a href="viewer.html?id=${art.id}">${art.title}</a>
-                        <small>FILED_BY: ${art.profiles ? art.profiles.full_name : "UNKNOWN_AUTHOR"}</small>
-                    </div>`;
-            });
         }
-        loadArchive();
+
+        // 3. Manually trigger the function
+        window.onload = loadArchive;
     </script>
 </body>
 </html>
