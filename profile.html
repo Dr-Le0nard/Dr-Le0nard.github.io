@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Personnel Profile</title>
+    <style>
+        body { background: #0a0a0a; color: #00ff41; font-family: 'Courier New', monospace; padding: 40px; }
+        .profile-header { border-bottom: 2px solid #00ff41; margin-bottom: 20px; }
+        .file-list { list-style: square; }
+        .file-list li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="profile-header">
+        <h1 id="user-name">ACCESSING...</h1>
+        <p>CLEARANCE LEVEL: <span id="user-lvl">?</span></p>
+    </div>
+
+    <h3>ASSIGNED SECTOR: <span id="user-sector">---</span></h3>
+    <p><strong>BIO:</strong> <span id="user-bio">---</span></p>
+
+    <h3>AUTHORIZED FILES:</h3>
+    <ul class="file-list" id="user-files"></ul>
+
+    <button onclick="sessionStorage.clear(); window.location.href='login.html';">LOGOUT</button>
+
+    <script>
+        const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!user) {
+            window.location.href = 'login.html'; // Redirect if not logged in
+        } else {
+            document.getElementById('user-name').innerText = user.name;
+            document.getElementById('user-lvl').innerText = user.clearance;
+            document.getElementById('user-sector').innerText = user.sector;
+            document.getElementById('user-bio').innerText = user.bio;
+            
+            const fileList = document.getElementById('user-files');
+            user.files.forEach(file => {
+                let li = document.createElement('li');
+                li.innerText = file;
+                fileList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>

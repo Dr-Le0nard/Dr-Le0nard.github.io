@@ -1,0 +1,16 @@
+{
+  "DR-LEONARD-912": {
+    "name": "Dr. Leonard",
+    "clearance": "4",
+    "sector": "II",
+    "files": ["049-Test-Log", "Sector-II-Manifest"],
+    "bio": "Director of Science, Active Researcher."
+  },
+  "AGENT-STRIKER-44": {
+    "name": "Agent Striker",
+    "clearance": "3",
+    "sector": "III",
+    "files": ["MTF-Equipment-List"],
+    "bio": "Field Containment Specialist."
+  }
+}
