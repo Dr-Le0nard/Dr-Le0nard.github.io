@@ -1,62 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>SCiPNET - Site Login</title>
-    <style>
-        body {
-            background-color: #0a0a0a;
-            color: #00ff41; /* Classic Terminal Green */
-            font-family: 'Courier New', Courier, monospace;
-            padding: 20px;
-            text-transform: uppercase;
-        }
-
-        .crt-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        header {
-            border-bottom: 2px solid #00ff41;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-
-        .nav-link {
-            color: #00ff41;
-            text-decoration: none;
-            margin-right: 15px;
-            border: 1px solid #00ff41;
-            padding: 5px;
-        }
-
-        .nav-link:hover {
-            background-color: #00ff41;
-            color: #000;
-        }
-    </style>
-</head>
-<body>
-    <div class="crt-overlay"></div>
-    <header>
-        <h1>SCiPNET: SITE-INTERNAL TERMINAL</h1>
-        <nav>
-            <a href="index.html" class="nav-link">HOME</a>
-            <a href="database.html" class="nav-link">ARCHIVE</a>
-            <a href="forum.html" class="nav-link">COMMMS</a>
-        </nav>
-    </header>
-
-    <main>
-        <h2>Welcome, Dr. Le0nard</h2>
-        <p>> ACCESSING SECTOR-II RECORDS...</p>
-        <p>> SYSTEM STATUS: ONLINE</p>
-        <p>> WARNING: AUTHORIZED PERSONNEL ONLY</p>
-    </main>
-</body>
-</html>
+<script>
+    // If user is already logged in, skip the login page
+    if (sessionStorage.getItem('currentUser')) {
+        window.location.href = 'dashboard.html';
+    }
+</script>
