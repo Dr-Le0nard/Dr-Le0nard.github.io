@@ -19,6 +19,7 @@
     </div>
 
     <script>
+        console.log("SYSTEM_CHECK: ARCHIVE_SCRIPT_INITIATED");
         async function loadArchive() {
             // Check auth first
             const { data: { user } } = await _supabase.auth.getUser();
