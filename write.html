@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - File Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <script>
+        async function checkAuth() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) window.location.href = "index.html";
+        }
+        checkAuth();
+    </script>
+
+    <h1>NEW_REPORT_ENTRY</h1>
+    <nav>
+        <a href="dashboard.html">BACK_TO_DASHBOARD</a>
+    </nav>
+
+    <div class="input-container">
+        <label>DOCUMENT_TITLE:</label>
+        <input type="text" id="title" placeholder="SCP-XXX / OPERATION_NAME">
+
+        <label>DOCUMENT_CONTENT:</label>
+        <textarea id="content" rows="15" placeholder="ENTER DATA..."></textarea>
+
+        <button onclick="submitReport()">TRANSMIT_TO_ARCHIVE</button>
+    </div>
+
+    <script>
+        async function submitReport() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+
+            if(!title || !content) {
+                alert("ERROR: EMPTY_FIELDS_DETECTED");
+                return;
+            }
+
+            const { error } = await _supabase
+                .from('articles')
+                .insert([{ 
+                    title: title, 
+                    content: content, 
+                    author_id: user.id 
+                }]);
+
+            if (error) {
+                alert("UPLOAD FAILED: " + error.message);
+            } else {
+                alert("UPLOAD SUCCESSFUL");
+                window.location.href = "archive.html";
+            }
+        }
+    </script>
+</body>
+</html>

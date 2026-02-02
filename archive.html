@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Archive</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>CENTRAL_ARCHIVE</h1>
+    <nav>
+        <a href="dashboard.html">DASHBOARD</a> | 
+        <a href="write.html">NEW_ENTRY</a>
+    </nav>
+
+    <div id="article-list">
+        <p>SCANNING_DATABASE...</p>
+    </div>
+
+    <script>
+        async function loadArchive() {
+            // Check auth first
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) { window.location.href = "index.html"; return; }
+
+            // Fetch data
+            const { data: articles, error } = await _supabase
+                .from('articles')
+                .select('id, title, profiles(full_name)')
+                .order('created_at', { ascending: false });
+
+            const listDiv = document.getElementById('article-list');
+            listDiv.innerHTML = ""; // Clear the 'scanning' message
+
+            if (error) {
+                listDiv.innerHTML = "<p>ERROR: UNABLE_TO_REACH_DATABASE</p>";
+                return;
+            }
+
+            articles.forEach(art => {
+                listDiv.innerHTML += `
+                    <div class="scp-card">
+                        <a href="viewer.html?id=${art.id}">${art.title}</a>
+                        <small>FILED_BY: ${art.profiles ? art.profiles.full_name : "UNKNOWN_AUTHOR"}</small>
+                    </div>`;
+            });
+        }
+        loadArchive();
+    </script>
+</body>
+</html>

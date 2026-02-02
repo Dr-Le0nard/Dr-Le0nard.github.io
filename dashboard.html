@@ -1,68 +1,43 @@
-<script>
-    if (!sessionStorage.getItem('currentUser')) {
-        window.location.href = 'index.html'; 
-    }
-</script>
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>SCiPNET - Site Dashboard</title>
-    <style>
-        body {
-            background-color: #0a0a0a;
-            color: #00ff41; /* Classic Terminal Green */
-            font-family: 'Courier New', Courier, monospace;
-            padding: 20px;
-            text-transform: uppercase;
-        }
-
-        .crt-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        header {
-            border-bottom: 2px solid #00ff41;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-
-        .nav-link {
-            color: #00ff41;
-            text-decoration: none;
-            margin-right: 15px;
-            border: 1px solid #00ff41;
-            padding: 5px;
-        }
-
-        .nav-link:hover {
-            background-color: #00ff41;
-            color: #000;
-        }
-    </style>
+    <title>SCiPNET - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="crt-overlay"></div>
-    <header>
-        <h1>SCiPNET: SITE-INTERNAL TERMINAL</h1>
+    <div id="loading">INITIALIZING SESSION...</div>
+    <div id="main-content" style="display:none;">
+        <h1 id="welcome">WELCOME, [REDACTED]</h1>
+        <p>CLEARANCE: <span id="lvl">0</span></p>
         <nav>
-            <a href="dashboard.html" class="nav-link">HOME</a>
-            <a href="database.html" class="nav-link">ARCHIVE</a>
-            <a href="forum.html" class="nav-link">COMMMS</a>
+            <a href="archive.html">ARCHIVE</a> | 
+            <a href="write.html">FILE REPORT</a> | 
+            <button onclick="_supabase.auth.signOut().then(() => location.href='index.html')">LOGOUT</button>
         </nav>
-    </header>
+    </div>
 
-    <main>
-        <h2>Welcome, Dr. Le0nard</h2>
-        <p>> ACCESSING SECTOR-II RECORDS...</p>
-        <p>> SYSTEM STATUS: ONLINE</p>
-        <p>> WARNING: AUTHORIZED PERSONNEL ONLY</p>
-    </main>
+    <script>
+        async function loadProfile() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) { window.location.href = "index.html"; return; }
+
+            // Fetch the extra info from our 'profiles' table
+            const { data: profile } = await _supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (profile) {
+                document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
+                document.getElementById('lvl').innerText = profile.clearance_level;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            }
+        }
+        loadProfile();
+    </script>
 </body>
 </html>

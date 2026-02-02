@@ -1,0 +1,96 @@
+/* SCiPNET Terminal Aesthetics */
+:root {
+    --terminal-green: #00ff41;
+    --dark-green: #003b00;
+    --bg-black: #050505;
+    --error-red: #ff3e3e;
+}
+
+body {
+    background-color: var(--bg-black);
+    color: var(--terminal-green);
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+    text-transform: uppercase; /* Optional: adds to the 'old computer' feel */
+}
+
+/* CRT Scanline Effect Overlay */
+body::before {
+    content: " ";
+    display: block;
+    position: fixed;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 9999;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+h1, h2, h3 {
+    border-bottom: 1px solid var(--terminal-green);
+    padding-bottom: 5px;
+    text-shadow: 0 0 8px var(--terminal-green);
+}
+
+/* Navigation Links */
+nav {
+    margin-bottom: 30px;
+    border: 1px solid var(--terminal-green);
+    padding: 10px;
+    display: inline-block;
+}
+
+nav a, button {
+    color: var(--bg-black);
+    background-color: var(--terminal-green);
+    text-decoration: none;
+    padding: 5px 15px;
+    margin-right: 10px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+nav a:hover, button:hover {
+    background-color: #00cc33;
+    box-shadow: 0 0 10px var(--terminal-green);
+}
+
+/* Input Fields */
+input, textarea {
+    background-color: #000;
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+    outline: none;
+}
+
+/* Archive Cards */
+.scp-card {
+    border: 1px dashed var(--terminal-green);
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: background 0.3s;
+}
+
+.scp-card:hover {
+    background: var(--dark-green);
+}
+
+.scp-card a {
+    color: var(--terminal-green);
+    font-size: 1.2em;
+    display: block;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: var(--terminal-green); }

@@ -1,115 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>SCiPNET - Terminal Login</title>
-    <style>
-        /* Terminal Styling */
-        body { 
-            background-color: #050505; 
-            color: #00ff41; 
-            font-family: 'Courier New', monospace; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0;
-            overflow: hidden;
-        }
-
-        .login-container {
-            border: 2px solid #00ff41;
-            padding: 40px;
-            background: rgba(0, 20, 0, 0.9);
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
-            text-align: center;
-            width: 400px;
-        }
-
-        input {
-            background: #000;
-            border: 1px solid #00ff41;
-            color: #00ff41;
-            padding: 10px;
-            width: 100%;
-            margin-top: 20px;
-            text-align: center;
-            outline: none;
-        }
-
-        button {
-            background: #00ff41;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            margin-top: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-        }
-
-        button:hover { background: #00cc33; }
-
-        .error-msg { color: #ff0000; margin-top: 15px; display: none; font-size: 0.8em; }
-
-        /* Scanline effect */
-        .scanlines {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-    </style>
-</head>
+    <title>SCiPNET - Auth</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="style.css"> </head>
 <body>
-    <div class="scanlines"></div>
-
     <div class="login-container">
-        <h2 style="letter-spacing: 5px;">SCiPNET</h2>
-        <p>RESTRICTED ACCESS AREA</p>
-        <hr border="1" color="#00ff41">
-        <p style="font-size: 0.7em;">ENTER PERSONNEL KEYCODE</p>
-        
-        <input type="password" id="idInput" placeholder="********" autocomplete="off">
-        <button onclick="attemptLogin()">INITIALIZE AUTH</button>
-        <p id="error" class="error-msg">ACCESS DENIED: INVALID KEYCODE</p>
+        <h2>SCiPNET TERMINAL</h2>
+        <input type="email" id="email" placeholder="PERSONNEL_EMAIL">
+        <input type="password" id="password" placeholder="PASSWORD">
+        <button onclick="login()">AUTHENTICATE</button>
+        <p id="msg"></p>
     </div>
 
     <script>
-        // GATEKEEPER: Check if already logged in
-        if (sessionStorage.getItem('currentUser')) {
-            window.location.href = 'dashboard.html';
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                document.getElementById('msg').innerText = "ACCESS DENIED: " + error.message;
+            } else {
+                window.location.href = "dashboard.html";
+            }
         }
-
-        function attemptLogin() {
-            const input = document.getElementById('idInput').value;
-            const errorElement = document.getElementById('error');
-
-            fetch('users.json')
-                .then(res => res.json())
-                .then(users => {
-                    if (users[input]) {
-                        // Store full user object and the key (their ID)
-                        const userData = users[input];
-                        userData.id = input; // Attach ID for activity tracking later
-                        sessionStorage.setItem('currentUser', JSON.stringify(userData));
-                        window.location.href = 'dashboard.html';
-                    } else {
-                        errorElement.style.display = 'block';
-                        document.getElementById('idInput').value = '';
-                    }
-                })
-                .catch(err => {
-                    console.error("Critical System Error:", err);
-                    alert("SCiPNET DATABASE UNREACHABLE");
-                });
-        }
-
-        // Allow 'Enter' key to submit
-        document.getElementById('idInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') attemptLogin();
-        });
     </script>
 </body>
 </html>
