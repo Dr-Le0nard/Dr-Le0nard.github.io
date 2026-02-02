@@ -19,18 +19,27 @@
             const params = new URLSearchParams(window.location.search);
             const id = params.get('id');
 
-            const { data: art, error } = await _supabase
-                .from('articles')
-                .select('*, profiles(full_name)')
-                .eq('id', id)
-                .single();
+            // 1. Get User Profile (to see their clearance)
+            const { data: { user } } = await _supabase.auth.getUser();
+            const { data: profile } = await _supabase.from('profiles').select('clearance_level').eq('id', user.id).single();
+
+            // 2. Get the Article
+            const { data: art, error } = await _supabase.from('articles').select('*, profiles(full_name)').eq('id', id).single();
 
             if (art) {
+                // 3. The Security Check
+                if (profile.clearance_level < art.required_clearance) {
+                    document.body.innerHTML = `
+                        <div style="color: red; text-align: center; padding-top: 50px;">
+                            <h1>[ACCESS DENIED]</h1>
+                            <p>MEMETIC KILL AGENT ACTIVATED. REMAIN CALM AND WAIT FOR SECURITY TEAMS.</p>
+                        </div>`;
+                    return;
+                }
+
                 document.getElementById('title').innerText = art.title;
                 document.getElementById('author').innerText = art.profiles.full_name;
                 document.getElementById('content').innerText = art.content;
-            } else {
-                document.getElementById('title').innerText = "404: FILE_NOT_FOUND";
             }
         }
         displayArticle();
