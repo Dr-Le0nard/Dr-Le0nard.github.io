@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Document Viewer</title>
+    <style>
+        body { background: #0a0a0a; color: #00ff41; font-family: 'Courier New', monospace; padding: 40px; }
+        .document-frame { border: 1px solid #00ff41; padding: 20px; max-width: 800px; margin: auto; }
+        .redacted { background: #00ff41; color: #00ff41; }
+        .back-btn { color: #00ff41; text-decoration: none; border: 1px solid #00ff41; padding: 5px; display: inline-block; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <a href="database.html" class="back-btn"><< RETURN_TO_ARCHIVE</a>
+    
+    <div class="document-frame" id="content">
+        <h1 id="scp-title">LOADING...</h1>
+        <p><strong>OBJECT CLASS:</strong> <span id="scp-class">---</span></p>
+        <hr style="border: 1px solid #00ff41;">
+        <h3>SPECIAL CONTAINMENT PROCEDURES:</h3>
+        <p id="scp-containment">---</p>
+        <h3>DESCRIPTION:</h3>
+        <p id="scp-desc">---</p>
+    </div>
+
+    <script>
+        // This script reads the URL and fills in the blanks
+        const params = new URLSearchParams(window.location.search);
+        const scpId = params.get('id');
+
+        fetch('data.json')
+            .then(response => response.json())
+            .then(data => {
+                const scp = data[scpId];
+                if(scp) {
+                    document.getElementById('scp-title').innerText = scp.title;
+                    document.getElementById('scp-class').innerText = scp.class;
+                    document.getElementById('scp-containment').innerText = scp.containment;
+                    document.getElementById('scp-desc').innerText = scp.desc;
+                } else {
+                    document.getElementById('content').innerHTML = "<h1>ERROR 404: FILE_NOT_FOUND</h1>";
+                }
+            });
+    </script>
+</body>
+</html>
