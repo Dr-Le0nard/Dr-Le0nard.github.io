@@ -52,10 +52,13 @@
                 }
 
                 articles.forEach(art => {
-                    const author = art.profiles ? art.profiles.full_name : "UNKNOWN_AUTHOR";
+                    const author = art.profiles ? art.profiles.full_name : "UNKNOWN";
+                    // Check if the article has a clearance column (default to 1 if not)
+                    const reqLvl = art.required_clearance || 1;
+                    
                     listDiv.innerHTML += `
                         <div class="scp-card">
-                            <a href="viewer.html?id=${art.id}">${art.title}</a>
+                            <a href="viewer.html?id=${art.id}">[LEVEL ${reqLvl}] ${art.title}</a>
                             <small>FILED_BY: ${author}</small>
                         </div>`;
                 });
