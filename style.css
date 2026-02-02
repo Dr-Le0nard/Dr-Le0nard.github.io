@@ -1,4 +1,6 @@
 /* SCiPNET Terminal Aesthetics */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
 :root {
     --terminal-green: #00ff41;
     --dark-green: #003b00;
@@ -9,11 +11,13 @@
 body {
     background-color: var(--bg-black);
     color: var(--terminal-green);
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'VT323', monospace; /* Upgraded from Courier */
+    font-size: 1.2rem;
     margin: 0;
     padding: 20px;
-    line-height: 1.6;
-    text-transform: uppercase; /* Optional: adds to the 'old computer' feel */
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* CRT Scanline Effect Overlay */

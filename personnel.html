@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Personnel Directory</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>FOUNDATION_PERSONNEL_DIRECTORY</h1>
+    <nav>
+        <a href="dashboard.html">DASHBOARD</a> | 
+        <a href="archive.html">ARCHIVE</a>
+    </nav>
+
+    <div id="personnel-list">
+        <p>RETRIVING_STAFF_MANIFEST...</p>
+    </div>
+
+    <script>
+        async function loadPersonnel() {
+            const { data: staff, error } = await _supabase
+                .from('profiles')
+                .select('full_name, clearance_level, bio')
+                .order('clearance_level', { ascending: false });
+
+            const listDiv = document.getElementById('personnel-list');
+            listDiv.innerHTML = "";
+
+            if (error) {
+                listDiv.innerHTML = "<p>ERROR: DATABASE_ACCESS_DENIED</p>";
+                return;
+            }
+
+            staff.forEach(person => {
+                listDiv.innerHTML += `
+                    <div class="scp-card">
+                        <h3>${person.full_name}</h3>
+                        <p>CLEARANCE_LEVEL: ${person.clearance_level}</p>
+                        <p><small>${person.bio || "NO_BIO_ON_RECORD"}</small></p>
+                    </div>`;
+            });
+        }
+        window.onload = loadPersonnel;
+    </script>
+</body>
+</html>
