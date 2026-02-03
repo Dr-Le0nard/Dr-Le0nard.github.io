@@ -12,24 +12,45 @@
     <h1>ADMIN_TERMINAL_OVERRIDE</h1>
     <nav><a href="dashboard.html">BACK_TO_DASHBOARD</a></nav>
     
-    <div id="pending-list">SCANNING_FOR_REQUESTS...</div>
+    <section>
+        <h2>PENDING_ACCESS_REQUESTS</h2>
+        <div id="pending-list">SCANNING_FOR_REQUESTS...</div>
+    </section>
+
+    <hr style="border: 1px solid var(--terminal-green); margin: 40px 0;">
+
+    <section>
+        <h2>ACTIVE_PERSONNEL_MANAGEMENT</h2>
+        <div id="active-list">SCANNING_ACTIVE_USERS...</div>
+    </section>
 
     <script>
-        async function loadPending() {
+        async function initAdmin() {
             const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) { window.location.href = "index.html"; return; }
+
+            // Verify Admin Status
             const { data: me } = await _supabase.from('profiles').select('is_admin').eq('id', user.id).single();
             
             if (!me || !me.is_admin) {
+                alert("ACCESS_DENIED: ADMINISTRATIVE_PRIVILEGES_REQUIRED");
                 window.location.href = "dashboard.html";
                 return;
             }
 
-            const { data: pending } = await _supabase
+            loadPending();
+            loadActiveUsers();
+        }
+
+        async function loadPending() {
+            const { data: pending, error } = await _supabase
                 .from('profiles')
                 .select('*')
                 .eq('is_approved', false);
 
             const container = document.getElementById('pending-list');
+            if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
+            
             container.innerHTML = pending.length === 0 ? "NO_PENDING_REQUESTS" : "";
 
             pending.forEach(u => {
@@ -49,33 +70,58 @@
             });
         }
 
+        async function loadActiveUsers() {
+            const { data: active, error } = await _supabase
+                .from('profiles')
+                .select('*')
+                .eq('is_approved', true)
+                .order('full_name', { ascending: true });
+
+            const container = document.getElementById('active-list');
+            if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
+
+            container.innerHTML = active.length === 0 ? "NO_ACTIVE_USERS" : "";
+
+            active.forEach(u => {
+                // We don't want to show a revoke button for ourselves!
+                const isMe = _supabase.auth.getUser().id === u.id;
+                
+                container.innerHTML += `
+                    <div class="scp-card" style="border-style: dashed; opacity: 0.8;">
+                        <p>${u.full_name} [LEVEL ${u.clearance_level}] ${u.is_admin ? '(ADMIN)' : ''}</p>
+                        <button onclick="revokeAccess('${u.id}')" 
+                                style="color: #ff4444; border-color: #ff4444;"
+                                ${u.is_admin ? 'disabled' : ''}>
+                            REVOKE_ACCESS
+                        </button>
+                    </div>`;
+            });
+        }
+
         async function approveUser(userId) {
             const selectedLevel = document.getElementById(`lvl-${userId}`).value;
-            
             const { error } = await _supabase
                 .from('profiles')
-                .update({ 
-                    is_approved: true, 
-                    clearance_level: parseInt(selectedLevel) 
-                })
+                .update({ is_approved: true, clearance_level: parseInt(selectedLevel) })
                 .eq('id', userId);
             
-            if (error) {
-                alert("UPDATE_FAILED: " + error.message);
-            } else {
-                location.reload();
+            if (error) alert("UPDATE_FAILED: " + error.message);
+            else location.reload();
+        }
+
+        async function revokeAccess(userId) {
+            if (confirm("WARNING: ARE YOU SURE YOU WANT TO REVOKE ACCESS FOR THIS USER?")) {
+                const { error } = await _supabase
+                    .from('profiles')
+                    .update({ is_approved: false })
+                    .eq('id', userId);
+                
+                if (error) alert("REVOKE_FAILED: " + error.message);
+                else location.reload();
             }
         }
 
-        // Enter key listener for the whole page
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                // Since there might be multiple buttons, 
-                // we don't auto-submit on Admin page to prevent accidental approvals.
-            }
-        });
-
-        window.onload = loadPending;
+        window.onload = initAdmin;
     </script>
 </body>
 </html>
