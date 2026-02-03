@@ -1,21 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>SCiPNET - Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="loading">INITIALIZING SESSION...</div>
+    <div id="loading">INITIALIZING_SECURE_SESSION...</div>
+
     <div id="main-content" style="display:none;">
         <h1 id="welcome">WELCOME, [REDACTED]</h1>
-        <p>CLEARANCE: <span id="lvl">0</span></p>
+        
+        <div class="clearance-badge">
+            SECURITY_CLEARANCE: LEVEL <span id="lvl">0</span>
+        </div>
+
         <nav>
-            <a href="archive.html">ARCHIVE</a> | 
-            <a href="write.html">FILE REPORT</a> | 
-            <button onclick="_supabase.auth.signOut().then(() => location.href='index.html')">LOGOUT</button>
+            <a href="archive.html">DATABASE_ARCHIVE</a>
+            <a href="personnel.html">PERSONNEL_DIRECTORY</a>
+            <a href="write.html">FILE_NEW_REPORT</a>
+            <button onclick="logout()">TERMINATE_SESSION</button>
         </nav>
+
+        <hr>
+        <div class="system-status">
+            <p>SYSTEM_STATUS: <span style="color: var(--terminal-green);">STABLE</span></p>
+            <p>LOCATION: SITE-19</p>
+        </div>
     </div>
 
     <script>
@@ -23,8 +36,7 @@
             const { data: { user } } = await _supabase.auth.getUser();
             if (!user) { window.location.href = "index.html"; return; }
 
-            // Fetch the extra info from our 'profiles' table
-            const { data: profile } = await _supabase
+            const { data: profile, error } = await _supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
@@ -33,11 +45,22 @@
             if (profile) {
                 document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
                 document.getElementById('lvl').innerText = profile.clearance_level;
+                
+                // Hide loading, show content
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
+            } else {
+                console.error("Profile fetch error:", error);
+                document.getElementById('loading').innerText = "ERROR: PROFILE_SYNC_FAILED";
             }
         }
-        loadProfile();
+
+        async function logout() {
+            await _supabase.auth.signOut();
+            window.location.href = "index.html";
+        }
+
+        window.onload = loadProfile;
     </script>
 </body>
 </html>
