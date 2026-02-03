@@ -109,6 +109,16 @@ input, textarea {
     opacity: 0.7;
 }
 
+@keyframes alert-flicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.flicker-animation {
+    animation: alert-flicker 0.5s infinite;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: #000; }
