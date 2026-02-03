@@ -123,3 +123,64 @@ input, textarea {
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: #000; }
 ::-webkit-scrollbar-thumb { background: var(--terminal-green); }
+
+/* Banned Screen Styling */
+.banned-overlay {
+    background: black;
+    color: #ff0000;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+/* The flickering "WARNING" text */
+.flicker-text {
+    font-size: 4rem;
+    font-weight: bold;
+    text-shadow: 0 0 10px #ff0000;
+    animation: flicker 0.15s infinite;
+    margin-bottom: 20px;
+}
+
+/* CRT Scanline effect */
+.scanlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.25) 50%
+    ), linear-gradient(
+        90deg, 
+        rgba(255, 0, 0, 0.06), 
+        rgba(0, 255, 0, 0.02), 
+        rgba(0, 0, 255, 0.06)
+    );
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+@keyframes flicker {
+    0% { opacity: 0.1; }
+    50% { opacity: 1; }
+    100% { opacity: 0.2; }
+}
+
+.warning-box {
+    border: 2px solid #ff0000;
+    padding: 20px;
+    background: rgba(255, 0, 0, 0.1);
+    max-width: 80%;
+}

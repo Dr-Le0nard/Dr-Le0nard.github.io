@@ -110,13 +110,16 @@
         }
 
         async function revokeAccess(userId) {
-            if (confirm("WARNING: ARE YOU SURE YOU WANT TO REVOKE ACCESS FOR THIS USER?")) {
+            if (confirm("WARNING: PERMANENTLY BAN THIS USER?")) {
                 const { error } = await _supabase
                     .from('profiles')
-                    .update({ is_approved: false })
+                    .update({ 
+                        is_approved: false, 
+                        is_banned: true // They are now blacklisted
+                    })
                     .eq('id', userId);
                 
-                if (error) alert("REVOKE_FAILED: " + error.message);
+                if (error) alert("BAN_FAILED: " + error.message);
                 else location.reload();
             }
         }

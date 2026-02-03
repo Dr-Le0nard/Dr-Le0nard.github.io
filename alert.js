@@ -36,15 +36,14 @@ async function securityPulse() {
     if (user) {
         const { data: profile } = await _supabase
             .from('profiles')
-            .select('is_approved')
+            .select('is_approved, is_banned')
             .eq('id', user.id)
             .single();
 
-        // If the profile is found but they are no longer approved
-        if (profile && profile.is_approved === false) {
-            console.error("SECURITY_REVOKED: TERMINATING_SESSION");
+        // If they are banned OR unapproved, terminate immediately
+        if (profile && (profile.is_approved === false || profile.is_banned === true)) {
             await _supabase.auth.signOut();
-            window.location.href = "index.html?error=access_revoked";
+            window.location.href = "index.html?error=session_terminated";
         }
     }
 }

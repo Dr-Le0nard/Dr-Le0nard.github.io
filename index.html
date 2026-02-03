@@ -40,7 +40,6 @@
     <script>
         let isRegistering = false;
 
-        // Toggle between Login and Register
         function toggleAuth() {
             isRegistering = !isRegistering;
             document.getElementById('auth-title').innerText = isRegistering ? "ACCESS_REQUEST_FORM" : "SCiPNET_USER_LOGIN";
@@ -49,9 +48,24 @@
             document.getElementById('toggle-text').innerText = isRegistering ? "[BACK_TO_LOGIN]" : "[REQUEST_NEW_ACCESS]";
         }
 
-        // Listen for Enter Key
+        // Typewriter Effect Function
+        function typeWriter(text, elementId, speed = 30) {
+            let i = 0;
+            const element = document.getElementById(elementId);
+            element.innerHTML = ""; // Clear existing
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
         document.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 handleAuth();
             }
         });
@@ -62,21 +76,15 @@
             const errorMsg = document.getElementById('error-msg');
             const submitBtn = document.getElementById('submit-btn');
 
-            // Visual feedback
             submitBtn.innerText = "PROCESSING...";
             submitBtn.disabled = true;
 
             if (isRegistering) {
                 const fullName = document.getElementById('fullname').value;
-                
-                // 1. Sign up the user (This sends the email automatically)
                 const { data, error } = await _supabase.auth.signUp({ 
                     email, 
                     password,
-                    options: {
-                        // We store the name in 'metadata' so we can grab it AFTER they confirm
-                        data: { full_name: fullName }
-                    }
+                    options: { data: { full_name: fullName } }
                 });
                 
                 if (error) { 
@@ -86,15 +94,14 @@
                     return; 
                 }
 
-                // 2. Inform the user to check their email
                 document.querySelector('.terminal-box').innerHTML = `
                     <h1>REQUEST_SENT</h1>
-                    <p>A verification link has been dispatched to: <br><strong>${email}</strong></p>
-                    <p>Verify your identity via the link, then return to this terminal to login.</p>
+                    <p>Verification link dispatched to: <br><strong>${email}</strong></p>
+                    <p>Verify via email, then return to login.</p>
                     <button onclick="location.reload()">RETURN_TO_LOGIN</button>
                 `;
             } else {
-                // Login logic (This only works AFTER they confirm email)
+                // --- LOGIN LOGIC ---
                 const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
                 
                 if (error) { 
@@ -102,28 +109,63 @@
                     submitBtn.innerText = "LOGIN";
                     submitBtn.disabled = false;
                 } else { 
-                    // Once they login, we check if their profile exists. 
-                    // If it doesn't, we create it now using the metadata we saved!
+                    // 1. Check if the user is BANNED
+                    const { data: profile } = await _supabase
+                        .from('profiles')
+                        .select('is_banned')
+                        .eq('id', data.user.id)
+                        .maybeSingle();
+
+                    if (profile && profile.is_banned) {
+                        // Display the Banned Screen Structure
+                        document.body.innerHTML = `
+                            <div class="banned-overlay">
+                                <div class="scanlines"></div>
+                                <div class="flicker-text">TERMINAL_LOCKED</div>
+                                
+                                <div class="warning-box">
+                                    <h2 style="margin-top: 0;">[ SECURITY_BREACH_DETECTED ]</h2>
+                                    <p id="typewriter-revocation"></p>
+                                    <hr style="border: 1px solid #ff0000;">
+                                    <p id="typewriter-threat" style="font-size: 0.9rem; color: #ff5555;"></p>
+                                </div>
+
+                                <button onclick="location.reload()" style="margin-top: 40px; background: #ff0000; color: black; border: none; padding: 10px 20px; font-family: monospace; cursor: pointer; font-weight: bold;">
+                                    ACKNOWLEDGE_TERMINATION
+                                </button>
+                            </div>`;
+                        
+                        // Run typewriter effects
+                        typeWriter(`USER_ID: ${data.user.id} | STATUS: PERMANENT_REVOCATION_BY_O5_COUNCIL`, "typewriter-revocation", 40);
+                        setTimeout(() => {
+                            typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... STAY AT YOUR TERMINAL. DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
+                        }, 2500);
+
+                        await _supabase.auth.signOut();
+                        return;
+                    }
+
+                    // 2. Not banned? Check/Create profile and go to Dashboard
                     await checkAndCreateProfile(data.user);
-                    window.location.href = "dashboard.html"; 
+                    window.location.href = "dashboard.html";
                 }
             }
         }
 
-        // New helper function to bridge the gap
         async function checkAndCreateProfile(user) {
             const { data: profile } = await _supabase
                 .from('profiles')
                 .select('id')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!profile) {
-                // This is the first time they've logged in after confirming email
+                const fullName = user.user_metadata.full_name || "REDACTED_NAME";
                 await _supabase.from('profiles').insert([{ 
                     id: user.id, 
-                    full_name: user.user_metadata.full_name, 
+                    full_name: fullName, 
                     is_approved: false, 
+                    is_banned: false,
                     clearance_level: 0 
                 }]);
             }
