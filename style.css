@@ -94,6 +94,21 @@ input, textarea {
     display: block;
 }
 
+.clearance-badge {
+    border: 2px solid var(--terminal-green);
+    display: inline-block;
+    padding: 5px 15px;
+    margin: 20px 0;
+    font-weight: bold;
+    background-color: var(--dark-green);
+}
+
+.system-status {
+    margin-top: 50px;
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: #000; }
