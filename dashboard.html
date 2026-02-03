@@ -45,6 +45,23 @@
                 .single();
 
             if (profile) {
+                // --- START REALTIME SUBSCRIPTION ---
+                _supabase
+                    .channel('public:profiles')
+                    .on('postgres_changes', { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'profiles', 
+                        filter: `id=eq.${user.id}` 
+                    }, (payload) => {
+                        // If the updated row has is_banned set to true, kick them!
+                        if (payload.new.is_banned) {
+                            window.location.href = "index.html";
+                        }
+                    })
+                    .subscribe();
+                // --- END REALTIME SUBSCRIPTION ---
+
                 // CHECK 1: Is the user approved?
                 if (!profile.is_approved) {
                     document.getElementById('loading').innerHTML = `
@@ -54,7 +71,7 @@
                     return;
                 }
 
-                // CHECK 2: Is the user an admin? (Show the hidden button)
+                // CHECK 2: Is the user an admin?
                 if (profile.is_admin) {
                     document.getElementById('admin-link').style.display = 'inline-block';
                 }
