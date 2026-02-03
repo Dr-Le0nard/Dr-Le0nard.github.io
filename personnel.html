@@ -14,26 +14,43 @@
         <a href="archive.html">ARCHIVE</a>
     </nav>
 
+    <div class="search-container" style="margin: 20px 0;">
+        <label>SEARCH_DATABASE:</label>
+        <input type="text" id="personnelSearch" placeholder="ENTER NAME OR CLEARANCE..." onkeyup="filterPersonnel()">
+    </div>
+
     <div id="personnel-list">
         <p>RETRIVING_STAFF_MANIFEST...</p>
     </div>
 
     <script>
+        let allStaff = []; // Global store for filtering
+
         async function loadPersonnel() {
             const { data: staff, error } = await _supabase
                 .from('profiles')
                 .select('full_name, clearance_level, bio')
                 .order('clearance_level', { ascending: false });
 
-            const listDiv = document.getElementById('personnel-list');
-            listDiv.innerHTML = "";
-
             if (error) {
-                listDiv.innerHTML = "<p>ERROR: DATABASE_ACCESS_DENIED</p>";
+                document.getElementById('personnel-list').innerHTML = "<p>ERROR: DATABASE_ACCESS_DENIED</p>";
                 return;
             }
 
-            staff.forEach(person => {
+            allStaff = staff; // Store the data
+            renderList(allStaff);
+        }
+
+        function renderList(list) {
+            const listDiv = document.getElementById('personnel-list');
+            listDiv.innerHTML = "";
+
+            if (list.length === 0) {
+                listDiv.innerHTML = "<p>NO_MATCHING_PERSONNEL_FOUND</p>";
+                return;
+            }
+
+            list.forEach(person => {
                 listDiv.innerHTML += `
                     <div class="scp-card">
                         <h3>${person.full_name}</h3>
@@ -42,6 +59,16 @@
                     </div>`;
             });
         }
+
+        function filterPersonnel() {
+            const query = document.getElementById('personnelSearch').value.toLowerCase();
+            const filtered = allStaff.filter(p => 
+                p.full_name.toLowerCase().includes(query) || 
+                p.clearance_level.toString().includes(query)
+            );
+            renderList(filtered);
+        }
+
         window.onload = loadPersonnel;
     </script>
 </body>
