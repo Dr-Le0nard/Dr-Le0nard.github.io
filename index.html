@@ -64,27 +64,41 @@
             if (isRegistering) {
                 const fullName = document.getElementById('fullname').value;
                 
-                // 1. Sign up user
-                const { data, error } = await _supabase.auth.signUp({ email, password });
+                // 1. Sign up the user
+                const { data, error } = await _supabase.auth.signUp({ 
+                    email, 
+                    password 
+                });
                 
-                if (error) { errorMsg.innerText = error.message; return; }
+                if (error) { 
+                    errorMsg.innerText = "AUTH_ERROR: " + error.message; 
+                    return; 
+                }
 
-                // 2. Create the "Pending" profile
-                const { error: profileError } = await _supabase
-                    .from('profiles')
-                    .insert([{ 
-                        id: data.user.id, 
-                        full_name: fullName, 
-                        is_approved: false, // DEFAULT: PENDING
-                        clearance_level: 0 
-                    }]);
+                if (data.user) {
+                    // 2. Create the profile
+                    // We use the ID from the user object we just created
+                    const { error: profileError } = await _supabase
+                        .from('profiles')
+                        .insert([
+                            { 
+                                id: data.user.id, 
+                                full_name: fullName, 
+                                is_approved: false, 
+                                clearance_level: 0 
+                            }
+                        ]);
 
-                if (!profileError) {
-                    alert("REQUEST SUBMITTED. Await Administrative Approval.");
-                    location.reload();
+                    if (profileError) {
+                        console.error(profileError);
+                        errorMsg.innerText = "PROFILE_SYNC_ERROR: " + profileError.message;
+                    } else {
+                        alert("ACCESS_REQUEST_LOGGED. AWAITING_ADMIN_APPROVAL.");
+                        location.reload();
+                    }
                 }
             } else {
-                // Login logic
+                // Login logic remains the same
                 const { error } = await _supabase.auth.signInWithPassword({ email, password });
                 if (error) { errorMsg.innerText = "INVALID_CREDENTIALS"; }
                 else { window.location.href = "dashboard.html"; }
