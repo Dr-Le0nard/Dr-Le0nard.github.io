@@ -60,48 +60,72 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorMsg = document.getElementById('error-msg');
+            const submitBtn = document.getElementById('submit-btn');
+
+            // Visual feedback
+            submitBtn.innerText = "PROCESSING...";
+            submitBtn.disabled = true;
 
             if (isRegistering) {
                 const fullName = document.getElementById('fullname').value;
                 
-                // 1. Sign up the user
+                // 1. Sign up the user (This sends the email automatically)
                 const { data, error } = await _supabase.auth.signUp({ 
                     email, 
-                    password 
+                    password,
+                    options: {
+                        // We store the name in 'metadata' so we can grab it AFTER they confirm
+                        data: { full_name: fullName }
+                    }
                 });
                 
                 if (error) { 
-                    errorMsg.innerText = "AUTH_ERROR: " + error.message; 
+                    errorMsg.innerText = "ERROR: " + error.message; 
+                    submitBtn.innerText = "RETRY";
+                    submitBtn.disabled = false;
                     return; 
                 }
 
-                if (data.user) {
-                    // 2. Create the profile
-                    // We use the ID from the user object we just created
-                    const { error: profileError } = await _supabase
-                        .from('profiles')
-                        .insert([
-                            { 
-                                id: data.user.id, 
-                                full_name: fullName, 
-                                is_approved: false, 
-                                clearance_level: 0 
-                            }
-                        ]);
-
-                    if (profileError) {
-                        console.error(profileError);
-                        errorMsg.innerText = "PROFILE_SYNC_ERROR: " + profileError.message;
-                    } else {
-                        alert("ACCESS_REQUEST_LOGGED. AWAITING_ADMIN_APPROVAL.");
-                        location.reload();
-                    }
-                }
+                // 2. Inform the user to check their email
+                document.querySelector('.terminal-box').innerHTML = `
+                    <h1>REQUEST_SENT</h1>
+                    <p>A verification link has been dispatched to: <br><strong>${email}</strong></p>
+                    <p>Verify your identity via the link, then return to this terminal to login.</p>
+                    <button onclick="location.reload()">RETURN_TO_LOGIN</button>
+                `;
             } else {
-                // Login logic remains the same
-                const { error } = await _supabase.auth.signInWithPassword({ email, password });
-                if (error) { errorMsg.innerText = "INVALID_CREDENTIALS"; }
-                else { window.location.href = "dashboard.html"; }
+                // Login logic (This only works AFTER they confirm email)
+                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                
+                if (error) { 
+                    errorMsg.innerText = "ACCESS_DENIED: " + error.message;
+                    submitBtn.innerText = "LOGIN";
+                    submitBtn.disabled = false;
+                } else { 
+                    // Once they login, we check if their profile exists. 
+                    // If it doesn't, we create it now using the metadata we saved!
+                    await checkAndCreateProfile(data.user);
+                    window.location.href = "dashboard.html"; 
+                }
+            }
+        }
+
+        // New helper function to bridge the gap
+        async function checkAndCreateProfile(user) {
+            const { data: profile } = await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', user.id)
+                .single();
+
+            if (!profile) {
+                // This is the first time they've logged in after confirming email
+                await _supabase.from('profiles').insert([{ 
+                    id: user.id, 
+                    full_name: user.user_metadata.full_name, 
+                    is_approved: false, 
+                    clearance_level: 0 
+                }]);
             }
         }
     </script>
