@@ -116,34 +116,40 @@
                         .eq('id', data.user.id)
                         .maybeSingle();
 
+                    // --- THE FIX STARTS HERE ---
                     if (profile && profile.is_banned) {
-                        // Display the Banned Screen Structure
+                        // Wipe the body and show the red screen instead of redirecting
                         document.body.innerHTML = `
-                            <div class="banned-overlay">
-                                <div class="scanlines"></div>
-                                <div class="flicker-text">TERMINAL_LOCKED</div>
-                                
-                                <div class="warning-box">
-                                    <h2 style="margin-top: 0;">[ SECURITY_BREACH_DETECTED ]</h2>
+                            <div class="banned-overlay" style="background: #200; color: #f00; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: monospace; border: 5px solid #f00;">
+                                <div class="flicker-text" style="font-size: 3rem; font-weight: bold;">TERMINAL_LOCKED</div>
+                                <div class="warning-box" style="border: 2px solid #f00; padding: 20px; margin: 20px; background: rgba(255,0,0,0.1);">
+                                    <h2>[ SECURITY_BREACH_DETECTED ]</h2>
                                     <p id="typewriter-revocation"></p>
-                                    <hr style="border: 1px solid #ff0000;">
-                                    <p id="typewriter-threat" style="font-size: 0.9rem; color: #ff5555;"></p>
+                                    <hr style="border: 1px solid #f00;">
+                                    <p id="typewriter-threat" style="color: #ff5555;"></p>
                                 </div>
-
-                                <button onclick="location.reload()" style="margin-top: 40px; background: #ff0000; color: black; border: none; padding: 10px 20px; font-family: monospace; cursor: pointer; font-weight: bold;">
+                                <button id="ack-btn" style="background: #f00; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; display: none;">
                                     ACKNOWLEDGE_TERMINATION
                                 </button>
                             </div>`;
                         
-                        // Run typewriter effects
-                        typeWriter(`USER_ID: ${data.user.id} | STATUS: PERMANENT_REVOCATION_BY_O5_COUNCIL`, "typewriter-revocation", 40);
+                        // Trigger the text effects
+                        typeWriter(`USER_ID: ${data.user.id} | STATUS: PERMANENT_REVOCATION`, "typewriter-revocation", 40);
+                        
                         setTimeout(() => {
-                            typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... STAY AT YOUR TERMINAL. DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
-                        }, 2500);
+                            typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
+                            document.getElementById('ack-btn').style.display = "block";
+                        }, 2000);
 
-                        await _supabase.auth.signOut();
-                        return;
+                        // Handle sign out ONLY on click
+                        document.getElementById('ack-btn').onclick = async () => {
+                            await _supabase.auth.signOut();
+                            location.href = "index.html"; 
+                        };
+
+                        return; // CRITICAL: This stops the function from running the redirect below
                     }
+                    // --- THE FIX ENDS HERE ---
 
                     // 2. Not banned? Check/Create profile and go to Dashboard
                     await checkAndCreateProfile(data.user);

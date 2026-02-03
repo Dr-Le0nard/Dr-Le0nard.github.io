@@ -25,9 +25,13 @@
     </section>
 
     <script>
+        let currentUserId = null;
+
         async function initAdmin() {
             const { data: { user } } = await _supabase.auth.getUser();
             if (!user) { window.location.href = "index.html"; return; }
+            
+            currentUserId = user.id;
 
             // Verify Admin Status
             const { data: me } = await _supabase.from('profiles').select('is_admin').eq('id', user.id).single();
@@ -43,10 +47,12 @@
         }
 
         async function loadPending() {
+            // FIX: Filter out users who are already banned
             const { data: pending, error } = await _supabase
                 .from('profiles')
                 .select('*')
-                .eq('is_approved', false);
+                .eq('is_approved', false)
+                .eq('is_banned', false); 
 
             const container = document.getElementById('pending-list');
             if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
@@ -66,6 +72,7 @@
                             <option value="5">Level 5 (Thaumiel/O5)</option>
                         </select>
                         <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
+                        <button onclick="revokeAccess('${u.id}')" style="margin-left:10px; color: #ff4444; border-color: #440000;">DENY_&_BAN</button>
                     </div>`;
             });
         }
@@ -83,16 +90,16 @@
             container.innerHTML = active.length === 0 ? "NO_ACTIVE_USERS" : "";
 
             active.forEach(u => {
-                // We don't want to show a revoke button for ourselves!
-                const isMe = _supabase.auth.getUser().id === u.id;
+                // FIX: Corrected the isMe check to use the stored currentUserId
+                const isMe = currentUserId === u.id;
                 
                 container.innerHTML += `
                     <div class="scp-card" style="border-style: dashed; opacity: 0.8;">
                         <p>${u.full_name} [LEVEL ${u.clearance_level}] ${u.is_admin ? '(ADMIN)' : ''}</p>
                         <button onclick="revokeAccess('${u.id}')" 
                                 style="color: #ff4444; border-color: #ff4444;"
-                                ${u.is_admin ? 'disabled' : ''}>
-                            REVOKE_ACCESS
+                                ${(u.is_admin || isMe) ? 'disabled' : ''}>
+                            ${isMe ? 'YOU' : 'REVOKE_ACCESS'}
                         </button>
                     </div>`;
             });
@@ -102,7 +109,11 @@
             const selectedLevel = document.getElementById(`lvl-${userId}`).value;
             const { error } = await _supabase
                 .from('profiles')
-                .update({ is_approved: true, clearance_level: parseInt(selectedLevel) })
+                .update({ 
+                    is_approved: true, 
+                    is_banned: false, // Ensure they aren't banned if being approved
+                    clearance_level: parseInt(selectedLevel) 
+                })
                 .eq('id', userId);
             
             if (error) alert("UPDATE_FAILED: " + error.message);
@@ -115,7 +126,7 @@
                     .from('profiles')
                     .update({ 
                         is_approved: false, 
-                        is_banned: true // They are now blacklisted
+                        is_banned: true 
                     })
                     .eq('id', userId);
                 
