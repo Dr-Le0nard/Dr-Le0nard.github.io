@@ -30,6 +30,28 @@ async function initRealtimeAlert() {
         .subscribe();
 }
 
+async function securityPulse() {
+    const { data: { user } } = await _supabase.auth.getUser();
+    
+    if (user) {
+        const { data: profile } = await _supabase
+            .from('profiles')
+            .select('is_approved')
+            .eq('id', user.id)
+            .single();
+
+        // If the profile is found but they are no longer approved
+        if (profile && profile.is_approved === false) {
+            console.error("SECURITY_REVOKED: TERMINATING_SESSION");
+            await _supabase.auth.signOut();
+            window.location.href = "index.html?error=access_revoked";
+        }
+    }
+}
+
+// Start the pulse check every 30 seconds
+setInterval(securityPulse, 30000);
+
 function showAlert(msg) {
     const banner = document.getElementById('global-alert-banner');
     banner.innerText = "!!! ALERT: " + msg + " !!!";

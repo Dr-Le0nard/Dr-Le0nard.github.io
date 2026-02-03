@@ -1,31 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>SCiPNET - Auth</title>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Login</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
-    <link rel="stylesheet" href="style.css"> </head>
-<body>
-    <div class="login-container">
-        <h2>SCiPNET TERMINAL</h2>
-        <input type="email" id="email" placeholder="PERSONNEL_EMAIL">
-        <input type="password" id="password" placeholder="PASSWORD">
-        <button onclick="login()">AUTHENTICATE</button>
-        <p id="msg"></p>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-screen">
+    <div class="terminal-box">
+        <h1 id="auth-title">SCiPNET_USER_LOGIN</h1>
+        
+        <div class="input-group">
+            <label>IDENTIFIER:</label>
+            <input type="email" id="email" placeholder="email@foundation.scp">
+        </div>
+        
+        <div class="input-group">
+            <label>CREDENTIALS:</label>
+            <input type="password" id="password" placeholder="password">
+        </div>
+
+        <div id="reg-fields" style="display:none;">
+            <div class="input-group">
+                <label>FULL_NAME:</label>
+                <input type="text" id="fullname" placeholder="Dr. Bright">
+            </div>
+        </div>
+
+        <div class="auth-actions">
+            <button id="submit-btn" onclick="handleAuth()">LOGIN</button>
+            <p onclick="toggleAuth()" id="toggle-text" style="cursor:pointer; text-decoration:underline;">[REQUEST_NEW_ACCESS]</p>
+        </div>
+        
+        <p id="error-msg" style="color:red;"></p>
     </div>
 
     <script>
-        async function login() {
+        let isRegistering = false;
+
+        // Toggle between Login and Register
+        function toggleAuth() {
+            isRegistering = !isRegistering;
+            document.getElementById('auth-title').innerText = isRegistering ? "ACCESS_REQUEST_FORM" : "SCiPNET_USER_LOGIN";
+            document.getElementById('submit-btn').innerText = isRegistering ? "SUBMIT_REQUEST" : "LOGIN";
+            document.getElementById('reg-fields').style.display = isRegistering ? "block" : "none";
+            document.getElementById('toggle-text').innerText = isRegistering ? "[BACK_TO_LOGIN]" : "[REQUEST_NEW_ACCESS]";
+        }
+
+        // Listen for Enter Key
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleAuth();
+            }
+        });
+
+        async function handleAuth() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
-            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            const errorMsg = document.getElementById('error-msg');
 
-            if (error) {
-                document.getElementById('msg').innerText = "ACCESS DENIED: " + error.message;
+            if (isRegistering) {
+                const fullName = document.getElementById('fullname').value;
+                
+                // 1. Sign up user
+                const { data, error } = await _supabase.auth.signUp({ email, password });
+                
+                if (error) { errorMsg.innerText = error.message; return; }
+
+                // 2. Create the "Pending" profile
+                const { error: profileError } = await _supabase
+                    .from('profiles')
+                    .insert([{ 
+                        id: data.user.id, 
+                        full_name: fullName, 
+                        is_approved: false, // DEFAULT: PENDING
+                        clearance_level: 0 
+                    }]);
+
+                if (!profileError) {
+                    alert("REQUEST SUBMITTED. Await Administrative Approval.");
+                    location.reload();
+                }
             } else {
-                window.location.href = "dashboard.html";
+                // Login logic
+                const { error } = await _supabase.auth.signInWithPassword({ email, password });
+                if (error) { errorMsg.innerText = "INVALID_CREDENTIALS"; }
+                else { window.location.href = "dashboard.html"; }
             }
         }
     </script>

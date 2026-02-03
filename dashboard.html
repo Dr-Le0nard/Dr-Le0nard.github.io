@@ -21,6 +21,7 @@
         <nav>
             <a href="archive.html">DATABASE_ARCHIVE</a>
             <a href="personnel.html">PERSONNEL_DIRECTORY</a>
+            <a href="admin.html" id="admin-link" style="display:none; color: red; border: 1px solid red;">ADMIN_OVERRIDE</a>
             <a href="write.html">FILE_NEW_REPORT</a>
             <button onclick="logout()">TERMINATE_SESSION</button>
         </nav>
@@ -37,22 +38,31 @@
             const { data: { user } } = await _supabase.auth.getUser();
             if (!user) { window.location.href = "index.html"; return; }
 
-            const { data: profile, error } = await _supabase
+            const { data: profile } = await _supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
             if (profile) {
+                // CHECK 1: Is the user approved?
+                if (!profile.is_approved) {
+                    document.getElementById('loading').innerHTML = `
+                        <h1 style="color:orange">ACCESS_PENDING</h1>
+                        <p>YOUR CREDENTIALS ARE BEING VERIFIED BY AN ADMINISTRATOR.</p>
+                        <button onclick="logout()">CANCEL_REQUEST</button>`;
+                    return;
+                }
+
+                // CHECK 2: Is the user an admin? (Show the hidden button)
+                if (profile.is_admin) {
+                    document.getElementById('admin-link').style.display = 'inline-block';
+                }
+
                 document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
                 document.getElementById('lvl').innerText = profile.clearance_level;
-                
-                // Hide loading, show content
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
-            } else {
-                console.error("Profile fetch error:", error);
-                document.getElementById('loading').innerText = "ERROR: PROFILE_SYNC_FAILED";
             }
         }
 
