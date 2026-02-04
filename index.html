@@ -70,6 +70,57 @@
             }
         });
 
+        // NEW: Emergency check for returning banned users
+        async function checkInitialBanStatus() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            
+            if (user) {
+                const { data: profile } = await _supabase
+                    .from('profiles')
+                    .select('is_banned')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (profile && profile.is_banned) {
+                    // Trigger the Red Screen immediately 
+                    // (Use the same document.body.innerHTML block from your handleAuth)
+                    showRedScreen(user.id); 
+                }
+            }
+        }
+
+        // Helper function so you don't repeat code
+        function showRedScreen(userId) {
+            document.body.innerHTML = `
+                <div class="banned-overlay" style="background: #200; color: #f00; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: monospace; border: 5px solid #f00;">
+                    <div class="flicker-text" style="font-size: 3rem; font-weight: bold;">TERMINAL_LOCKED</div>
+                    <div class="warning-box" style="border: 2px solid #f00; padding: 20px; margin: 20px; background: rgba(255,0,0,0.1);">
+                        <h2>[ SECURITY_BREACH_DETECTED ]</h2>
+                        <p id="typewriter-revocation"></p>
+                        <hr style="border: 1px solid #f00;">
+                        <p id="typewriter-threat" style="color: #ff5555;"></p>
+                    </div>
+                    <button id="ack-btn" style="background: #f00; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; display: none;">
+                        ACKNOWLEDGE_TERMINATION
+                    </button>
+                </div>`;
+            
+            typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`, "typewriter-revocation", 40);
+            
+            setTimeout(() => {
+                typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
+                document.getElementById('ack-btn').style.display = "block";
+            }, 2000);
+
+            document.getElementById('ack-btn').onclick = async () => {
+                await _supabase.auth.signOut();
+                location.reload(); 
+            };
+        }
+
+        // Call this as soon as the script loads
+        checkInitialBanStatus();
+
         async function handleAuth() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;

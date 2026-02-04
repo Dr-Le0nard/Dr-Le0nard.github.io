@@ -45,42 +45,102 @@
                 .single();
 
             if (profile) {
-                // --- START REALTIME SUBSCRIPTION ---
-                _supabase
-                    .channel('public:profiles')
+                // --- REALTIME SUBSCRIPTION ---
+                _supabase.channel('public:profiles')
                     .on('postgres_changes', { 
                         event: 'UPDATE', 
                         schema: 'public', 
                         table: 'profiles', 
                         filter: `id=eq.${user.id}` 
                     }, (payload) => {
-                        // If the updated row has is_banned set to true, kick them!
-                        if (payload.new.is_banned) {
-                            window.location.href = "index.html";
-                        }
-                    })
-                    .subscribe();
-                // --- END REALTIME SUBSCRIPTION ---
+                        if (payload.new.is_banned) window.location.href = "index.html";
+                    }).subscribe();
 
-                // CHECK 1: Is the user approved?
-                if (!profile.is_approved) {
+                // 1. OVERSEER BYPASS (GOD MODE)
+                // If you are the Overseer, you skip approval checks.
+                if (profile.is_overseer) {
+                    document.getElementById('welcome').innerText = "IDENTIFIED: SYSTEM_OVERSEER";
+                    document.getElementById('welcome').style.color = "gold";
+                    renderOverseerControls(); // Special panel for you
+                } 
+                // 2. STANDARD APPROVAL CHECK
+                else if (!profile.is_approved) {
                     document.getElementById('loading').innerHTML = `
                         <h1 style="color:orange">ACCESS_PENDING</h1>
-                        <p>YOUR CREDENTIALS ARE BEING VERIFIED BY AN ADMINISTRATOR.</p>
+                        <p>CREDENTIALS UNDER REVIEW BY ADMINISTRATION.</p>
                         <button onclick="logout()">CANCEL_REQUEST</button>`;
                     return;
                 }
 
-                // CHECK 2: Is the user an admin?
+                // 3. ADMIN LINK (Personnel Management)
                 if (profile.is_admin) {
                     document.getElementById('admin-link').style.display = 'inline-block';
                 }
 
-                document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
+                // 4. UI SETUP
+                if (!profile.is_overseer) {
+                    document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
+                }
+                
                 document.getElementById('lvl').innerText = profile.clearance_level;
+                
+                // 5. DEPARTMENTAL LOGIC
+                // This function will decide what links to show based on profile.department
+                renderDepartmentalMenu(profile.department, profile.is_overseer);
+
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
             }
+        }
+
+        function renderDepartmentalMenu(dept, isOverseer) {
+            const nav = document.querySelector('nav');
+            
+            // Define the modules
+            const modules = {
+                'AD': { label: 'ADMINISTRATIVE_LOG', type: 'admin' },
+                'RAISA': { label: 'INFOSEC_MANIFEST', type: 'infosec' },
+                'ScD': { label: 'RESEARCH_TEST_LOG', type: 'research' },
+                'MD': { label: 'MEDICAL_RECORD', type: 'medical' },
+                'SLMD': { label: 'MAINTENANCE_REPORT', type: 'maintenance' },
+                'DEA': { label: 'EXTERNAL_AFFAIRS_LOG', type: 'external' },
+                'DoA': { label: 'ADMISSIONS_FILE', type: 'admissions' },
+                'ITD': { label: 'TRIBUNAL_RECORD', type: 'tribunal' },
+                'DSIS': { label: 'INTEL_BRIEFING', type: 'intel' }
+            };
+
+            // If Overseer, we don't just show one; we provide a way to test all.
+            if (isOverseer) {
+                const testContainer = document.createElement('div');
+                testContainer.style.marginTop = "20px";
+                testContainer.style.border = "1px dashed gold";
+                testContainer.style.padding = "10px";
+                
+                let options = Object.keys(modules).map(key => 
+                    `<option value="${modules[key].type}">${modules[key].label}</option>`
+                ).join('');
+
+                testContainer.innerHTML = `
+                    <small style="color:gold">OVERSEER_MODULE_TESTER</small><br>
+                    <select onchange="window.location.href='write.html?type=' + this.value">
+                        <option>-- SELECT_MODULE_TO_TEST --</option>
+                        ${options}
+                    </select>
+                `;
+                nav.appendChild(testContainer);
+            } else if (dept && modules[dept]) {
+                // Standard user only sees their own department's link
+                const link = document.createElement('a');
+                link.href = `write.html?type=${modules[dept].type}`;
+                link.innerText = modules[dept].label;
+                nav.appendChild(link);
+            }
+        }
+
+        function renderOverseerControls() {
+            // You can add extra buttons here only you can see, 
+            // like "Wipe Logs" or "Global Broadcast"
+            console.log("OS_CONTROLS_LOADED");
         }
 
         async function logout() {
