@@ -2,76 +2,110 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SCiPNET - Archive</title>
+    <title>SCiPNET - Records Archive</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>CENTRAL_ARCHIVE</h1>
+    <h1>DATABASE_QUERY: SECURE_ARCHIVES</h1>
     <nav>
-        <a href="dashboard.html">DASHBOARD</a> | 
-        <a href="write.html">NEW_ENTRY</a>
+        <a href="dashboard.html">RETURN_TO_DASHBOARD</a>
+        <div id="overseer-filters" style="display:none; margin-top:10px; border:1px solid gold; padding:5px;">
+            <span style="color:gold">OVERSEER_VIEW:</span>
+            <select id="dept-filter" onchange="fetchReports()">
+                <option value="ALL">ALL_DEPARTMENTS</option>
+                <option value="ScD">SCIENTIFIC (ScD)</option>
+                <option value="MD">MEDICAL (MD)</option>
+                <option value="RAISA">INFOSEC (RAISA)</option>
+            </select>
+        </div>
     </nav>
 
-    <div id="article-list">
-        <p id="status-msg">SCANNING_DATABASE...</p>
-    </div>
+    <table id="archive-table">
+        <thead>
+            <tr>
+                <th>DATE</th>
+                <th>DEPT</th>
+                <th>CLEARANCE</th>
+                <th>DOCUMENT_TITLE</th>
+                <th>AUTHOR</th>
+                <th>ACTION</th>
+            </tr>
+        </thead>
+        <tbody id="report-list">
+            </tbody>
+    </table>
 
     <script>
-        // Force immediate execution check
-        console.log("SYSTEM_CHECK: SCRIPT_START");
+        let isOverseer = false;
 
-        async function loadArchive() {
-            const status = document.getElementById('status-msg');
+        async function initArchive() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) { window.location.href = "index.html"; return; }
+
+            const { data: profile } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
             
-            try {
-                console.log("SYSTEM_CHECK: ATTEMPTING_DB_CONNECTION");
-                
-                // 1. Verify _supabase exists
-                if (typeof _supabase === 'undefined') {
-                    throw new Error("SUPABASE_CLIENT_NOT_DEFINED - Check config.js");
-                }
-
-                // 2. Fetch data
-                const { data: articles, error } = await _supabase
-                    .from('articles')
-                    .select('id, title, profiles(full_name)')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                console.log("SYSTEM_CHECK: DATA_RECEIVED", articles);
-
-                const listDiv = document.getElementById('article-list');
-                listDiv.innerHTML = ""; 
-
-                if (!articles || articles.length === 0) {
-                    listDiv.innerHTML = "<p>NO_RECORDS_FOUND_IN_ARCHIVE</p>";
-                    return;
-                }
-
-                articles.forEach(art => {
-                    const author = art.profiles ? art.profiles.full_name : "UNKNOWN";
-                    // Check if the article has a clearance column (default to 1 if not)
-                    const reqLvl = art.required_clearance || 1;
-                    
-                    listDiv.innerHTML += `
-                        <div class="scp-card">
-                            <a href="viewer.html?id=${art.id}">[LEVEL ${reqLvl}] ${art.title}</a>
-                            <small>FILED_BY: ${author}</small>
-                        </div>`;
-                });
-
-            } catch (err) {
-                console.error("SYSTEM_FAILURE:", err);
-                status.innerText = "CRITICAL_ERROR: " + err.message;
+            if (profile.is_overseer) {
+                isOverseer = true;
+                document.getElementById('overseer-filters').style.display = 'block';
             }
+            
+            fetchReports();
         }
 
-        // 3. Manually trigger the function
-        window.onload = loadArchive;
+        async function fetchReports() {
+            const list = document.getElementById('report-list');
+            list.innerHTML = "<tr><td colspan='6'>RETRIEVING_DATA...</td></tr>";
+
+            // 1. Get current user profile data
+            const { data: { user } } = await _supabase.auth.getUser();
+            const { data: profile } = await _supabase.from('profiles').select('department, clearance_level').eq('id', user.id).single();
+
+            // 2. Start the query
+            let query = _supabase.from('reports').select('*').order('created_at', { ascending: false });
+
+            // 3. APPLY CLIENT-SIDE FILTERS (To match RLS)
+            if (!isOverseer) {
+                // Normal users only see their department and their clearance or lower
+                query = query.eq('dept_code', profile.department)
+                            .lte('clearance_level', profile.clearance_level);
+            } else {
+                // Overseer filters (the dropdown)
+                const filter = document.getElementById('dept-filter').value;
+                if (filter !== "ALL") {
+                    query = query.eq('dept_code', filter);
+                }
+            }
+
+            const { data: reports, error } = await query;
+
+            if (error) {
+                list.innerHTML = `<tr><td colspan='6' style='color:red'>QUERY_ERROR: ${error.message}</td></tr>`;
+                return;
+            }
+
+            list.innerHTML = "";
+            reports.forEach(report => {
+                const date = new Date(report.created_at).toLocaleDateString();
+                list.innerHTML += `
+                    <tr>
+                        <td>${date}</td>
+                        <td>[${report.dept_code}]</td>
+                        <td>LEVEL_${report.clearance_level}</td>
+                        <td style="color:var(--primary-color)">${report.title}</td>
+                        <td>${report.author_name || 'UNKNOWN'}</td>
+                        <td><button onclick="viewReport('${report.id}')">OPEN_FILE</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function viewReport(id) {
+            window.location.href = `view.html?id=${id}`;
+        }
+
+        initArchive();
     </script>
 </body>
 </html>

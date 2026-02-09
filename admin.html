@@ -14,14 +14,14 @@
     
     <section>
         <h2>PENDING_ACCESS_REQUESTS</h2>
-        <div id="pending-list">SCANNING_FOR_REQUESTS...</div>
+        <div id="pending-list" class="admin-grid">SCANNING_FOR_REQUESTS...</div>
     </section>
 
     <hr style="border: 1px solid var(--terminal-green); margin: 40px 0;">
 
     <section>
         <h2>ACTIVE_PERSONNEL_MANAGEMENT</h2>
-        <div id="active-list">SCANNING_ACTIVE_USERS...</div>
+        <div id="active-list" class="admin-grid">SCANNING_ACTIVE_USERS...</div>
     </section>
 
     <script>
@@ -47,7 +47,6 @@
         }
 
         async function loadPending() {
-            // FIX: Filter out users who are already banned
             const { data: pending, error } = await _supabase
                 .from('profiles')
                 .select('*')
@@ -62,7 +61,18 @@
             pending.forEach(u => {
                 container.innerHTML += `
                     <div class="scp-card">
-                        <p>USER: ${u.full_name} (${u.id.substring(0,8)}...)</p>
+                        <p><strong>USER:</strong> ${u.full_name}</p>
+                        
+                        <label>ASSIGN_DEPARTMENT:</label>
+                        <select id="dept-${u.id}">
+                            <option value="ScD">Scientific (ScD)</option>
+                            <option value="MD">Medical (MD)</option>
+                            <option value="SD">Security (SD)</option>
+                            <option value="EcD">Engineering (EcD)</option>
+                            <option value="RAISA">Infosec (RAISA)</option>
+                            <option value="AD">Administrative (AD)</option>
+                        </select>
+
                         <label>ASSIGN_CLEARANCE:</label>
                         <select id="lvl-${u.id}">
                             <option value="1">Level 1 (Restricted)</option>
@@ -71,8 +81,11 @@
                             <option value="4">Level 4 (Top Secret)</option>
                             <option value="5">Level 5 (Thaumiel/O5)</option>
                         </select>
-                        <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
-                        <button onclick="revokeAccess('${u.id}')" style="margin-left:10px; color: #ff4444; border-color: #440000;">DENY_&_BAN</button>
+
+                        <div style="margin-top:15px;">
+                            <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
+                            <button onclick="revokeAccess('${u.id}')" style="color: #ff4444; border-color: #440000;">DENY</button>
+                        </div>
                     </div>`;
             });
         }
@@ -90,16 +103,16 @@
             container.innerHTML = active.length === 0 ? "NO_ACTIVE_USERS" : "";
 
             active.forEach(u => {
-                // FIX: Corrected the isMe check to use the stored currentUserId
                 const isMe = currentUserId === u.id;
                 
                 container.innerHTML += `
                     <div class="scp-card" style="border-style: dashed; opacity: 0.8;">
-                        <p>${u.full_name} [LEVEL ${u.clearance_level}] ${u.is_admin ? '(ADMIN)' : ''}</p>
+                        <p><strong>${u.full_name}</strong></p>
+                        <p>DEPT: [${u.department || 'NONE'}] | CL: [${u.clearance_level}]</p>
                         <button onclick="revokeAccess('${u.id}')" 
-                                style="color: #ff4444; border-color: #ff4444;"
+                                style="color: #ff4444; border-color: #ff4444; width: 100%;"
                                 ${(u.is_admin || isMe) ? 'disabled' : ''}>
-                            ${isMe ? 'YOU' : 'REVOKE_ACCESS'}
+                            ${isMe ? 'YOU (ROOT)' : 'REVOKE_ACCESS'}
                         </button>
                     </div>`;
             });
@@ -107,17 +120,23 @@
 
         async function approveUser(userId) {
             const selectedLevel = document.getElementById(`lvl-${userId}`).value;
+            const selectedDept = document.getElementById(`dept-${userId}`).value;
+
             const { error } = await _supabase
                 .from('profiles')
                 .update({ 
                     is_approved: true, 
-                    is_banned: false, // Ensure they aren't banned if being approved
-                    clearance_level: parseInt(selectedLevel) 
+                    is_banned: false,
+                    clearance_level: parseInt(selectedLevel),
+                    department: selectedDept
                 })
                 .eq('id', userId);
             
             if (error) alert("UPDATE_FAILED: " + error.message);
-            else location.reload();
+            else {
+                alert("USER_AUTHORIZED: Credentials pushed to SCiPNET main-frame.");
+                location.reload();
+            }
         }
 
         async function revokeAccess(userId) {
