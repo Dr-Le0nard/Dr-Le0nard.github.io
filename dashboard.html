@@ -78,21 +78,23 @@
                 }
 
                 // 3. ADMIN LINK (Personnel Management)
-                if (profile.is_admin) {
-                    document.getElementById('admin-link').style.display = 'inline-block';
+                const adminLink = document.getElementById('admin-link');
+                if (adminLink) {
+                    // Only show if user is admin AND approved
+                    adminLink.style.display = profile.is_admin ? 'inline-block' : 'none';
                 }
 
-                // 4. UI SETUP (Targeting the new structure)
+                // 4. UI SETUP
                 if (!profile.is_overseer) {
-                    document.getElementById('welcome').innerText = "IDENTIFIED: " + profile.full_name.toUpperCase();
+                    const welcomeEl = document.getElementById('welcome');
+                    if (welcomeEl) welcomeEl.innerText = "IDENTIFIED: " + profile.full_name.toUpperCase();
                 }
                 
-                // Update Clearance Level and Department display
-                document.getElementById('lvl').innerText = profile.clearance_level;
+                const lvlEl = document.getElementById('lvl');
                 const deptDisplay = document.getElementById('dept-display');
-                if (deptDisplay) {
-                    deptDisplay.innerText = profile.department || "UNASSIGNED";
-                }
+                
+                if (lvlEl) lvlEl.innerText = profile.clearance_level;
+                if (deptDisplay) deptDisplay.innerText = profile.department || "UNASSIGNED";
                 
                 // 5. DEPARTMENTAL LOGIC
                 renderDepartmentalMenu(profile.department, profile.is_overseer);
