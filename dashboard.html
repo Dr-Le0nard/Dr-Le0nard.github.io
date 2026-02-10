@@ -9,24 +9,25 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="loading">INITIALIZING_SECURE_SESSION...</div>
-
     <div id="main-content" style="display:none;">
-        <h1 id="welcome">WELCOME, [REDACTED]</h1>
         
-        <div class="clearance-badge">
-            SECURITY_CLEARANCE: LEVEL <span id="lvl">0</span>
+        <div class="header-row">
+            <div class="identity-group">
+                <h1 id="welcome">WELCOME: [REDACTED]</h1>
+                <div class="clearance-badge">
+                    SECURITY_CLEARANCE: LEVEL <span id="lvl">0</span> // <span id="dept-display">PENDING_DEPT</span>
+                </div>
+            </div>
+            <button class="terminate-btn" onclick="logout()">TERMINATE_SESSION</button>
         </div>
 
-        <nav>
+        <nav class="dashboard-nav">
             <a href="archive.html">DATABASE_ARCHIVE</a>
             <a href="personnel.html">PERSONNEL_DIRECTORY</a>
-            <a href="admin.html" id="admin-link" style="display:none; color: red; border: 1px solid red;">ADMIN_OVERRIDE</a>
             <a href="write.html">FILE_NEW_REPORT</a>
-            <button onclick="logout()">TERMINATE_SESSION</button>
+            <a href="admin.html" id="admin-link" style="display:none; color: #ff0000; border: 1px solid #ff0000;">ADMIN_OVERRIDE</a>
         </nav>
 
-        <hr>
         <div class="system-status">
             <p>SYSTEM_STATUS: <span style="color: var(--terminal-green);">STABLE</span></p>
             <p>LOCATION: SITE-19</p>
@@ -54,21 +55,25 @@
                         filter: `id=eq.${user.id}` 
                     }, (payload) => {
                         if (payload.new.is_banned) window.location.href = "index.html";
+                        // Optional: Reload if clearance or dept changes to update UI live
+                        if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                     }).subscribe();
 
                 // 1. OVERSEER BYPASS (GOD MODE)
-                // If you are the Overseer, you skip approval checks.
                 if (profile.is_overseer) {
-                    document.getElementById('welcome').innerText = "IDENTIFIED: SYSTEM_OVERSEER";
-                    document.getElementById('welcome').style.color = "gold";
-                    renderOverseerControls(); // Special panel for you
+                    const welcomeEl = document.getElementById('welcome');
+                    welcomeEl.innerText = "IDENTIFIED: SYSTEM_OVERSEER";
+                    welcomeEl.style.color = "gold";
+                    welcomeEl.style.textShadow = "0 0 12px gold";
+                    renderOverseerControls(); 
                 } 
+                
                 // 2. STANDARD APPROVAL CHECK
                 else if (!profile.is_approved) {
                     document.getElementById('loading').innerHTML = `
                         <h1 style="color:orange">ACCESS_PENDING</h1>
                         <p>CREDENTIALS UNDER REVIEW BY ADMINISTRATION.</p>
-                        <button onclick="logout()">CANCEL_REQUEST</button>`;
+                        <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
                     return;
                 }
 
@@ -77,15 +82,19 @@
                     document.getElementById('admin-link').style.display = 'inline-block';
                 }
 
-                // 4. UI SETUP
+                // 4. UI SETUP (Targeting the new structure)
                 if (!profile.is_overseer) {
-                    document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
+                    document.getElementById('welcome').innerText = "IDENTIFIED: " + profile.full_name.toUpperCase();
                 }
                 
+                // Update Clearance Level and Department display
                 document.getElementById('lvl').innerText = profile.clearance_level;
+                const deptDisplay = document.getElementById('dept-display');
+                if (deptDisplay) {
+                    deptDisplay.innerText = profile.department || "UNASSIGNED";
+                }
                 
                 // 5. DEPARTMENTAL LOGIC
-                // This function will decide what links to show based on profile.department
                 renderDepartmentalMenu(profile.department, profile.is_overseer);
 
                 document.getElementById('loading').style.display = 'none';
@@ -94,9 +103,9 @@
         }
 
         function renderDepartmentalMenu(dept, isOverseer) {
-            const nav = document.querySelector('nav');
+            // Updated to target the new .dashboard-nav class
+            const nav = document.querySelector('.dashboard-nav');
             
-            // Define the modules
             const modules = {
                 'AD': { label: 'ADMINISTRATIVE_LOG', type: 'admin' },
                 'RAISA': { label: 'INFOSEC_MANIFEST', type: 'infosec' },
@@ -109,27 +118,25 @@
                 'DSIS': { label: 'INTEL_BRIEFING', type: 'intel' }
             };
 
-            // If Overseer, we don't just show one; we provide a way to test all.
             if (isOverseer) {
                 const testContainer = document.createElement('div');
-                testContainer.style.marginTop = "20px";
-                testContainer.style.border = "1px dashed gold";
-                testContainer.style.padding = "10px";
+                testContainer.style.marginLeft = "10px";
+                testContainer.style.borderLeft = "1px solid gold";
+                testContainer.style.paddingLeft = "10px";
                 
                 let options = Object.keys(modules).map(key => 
                     `<option value="${modules[key].type}">${modules[key].label}</option>`
                 ).join('');
 
                 testContainer.innerHTML = `
-                    <small style="color:gold">OVERSEER_MODULE_TESTER</small><br>
-                    <select onchange="window.location.href='write.html?type=' + this.value">
-                        <option>-- SELECT_MODULE_TO_TEST --</option>
+                    <select onchange="if(this.value) window.location.href='write.html?type=' + this.value" 
+                            style="width: auto; margin: 0; background: #000; color: gold; border: 1px solid gold;">
+                        <option value="">-- TEST_DEPT_MODULES --</option>
                         ${options}
                     </select>
                 `;
                 nav.appendChild(testContainer);
             } else if (dept && modules[dept]) {
-                // Standard user only sees their own department's link
                 const link = document.createElement('a');
                 link.href = `write.html?type=${modules[dept].type}`;
                 link.innerText = modules[dept].label;
@@ -138,8 +145,6 @@
         }
 
         function renderOverseerControls() {
-            // You can add extra buttons here only you can see, 
-            // like "Wipe Logs" or "Global Broadcast"
             console.log("OS_CONTROLS_LOADED");
         }
 
