@@ -9,8 +9,12 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="loading" style="text-align: center; margin-top: 50px;">
+        <h1 class="flicker-animation">INITIALIZING_SECURE_CONNECTION...</h1>
+        <p>ESTABLISHING HANDSHAKE WITH SITE-19 SERVERS</p>
+    </div>
+
     <div id="main-content" style="display:none;">
-        
         <div class="header-row">
             <div class="identity-group">
                 <h1 id="welcome">WELCOME: [REDACTED]</h1>
@@ -25,7 +29,7 @@
             <a href="archive.html">DATABASE_ARCHIVE</a>
             <a href="personnel.html">PERSONNEL_DIRECTORY</a>
             <a href="write.html">FILE_NEW_REPORT</a>
-            <a href="admin.html" id="admin-link" style="display:none; color: #ff0000; border: 1px solid #ff0000;">ADMIN_OVERRIDE</a>
+            <a href="admin.html" id="admin-link" style="display:none;">ADMIN_OVERRIDE</a>
         </nav>
 
         <div class="system-status">
@@ -55,59 +59,62 @@
                         filter: `id=eq.${user.id}` 
                     }, (payload) => {
                         if (payload.new.is_banned) window.location.href = "index.html";
-                        // Optional: Reload if clearance or dept changes to update UI live
                         if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                     }).subscribe();
 
                 // 1. OVERSEER BYPASS (GOD MODE)
                 if (profile.is_overseer) {
                     const welcomeEl = document.getElementById('welcome');
-                    welcomeEl.innerText = "IDENTIFIED: SYSTEM_OVERSEER";
-                    welcomeEl.style.color = "gold";
-                    welcomeEl.style.textShadow = "0 0 12px gold";
+                    if (welcomeEl) {
+                        welcomeEl.innerText = "IDENTIFIED: SYSTEM_OVERSEER";
+                        welcomeEl.style.color = "gold";
+                        welcomeEl.style.textShadow = "0 0 12px gold";
+                    }
                     renderOverseerControls(); 
                 } 
                 
                 // 2. STANDARD APPROVAL CHECK
                 else if (!profile.is_approved) {
-                    document.getElementById('loading').innerHTML = `
-                        <h1 style="color:orange">ACCESS_PENDING</h1>
-                        <p>CREDENTIALS UNDER REVIEW BY ADMINISTRATION.</p>
-                        <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
+                    const loadEl = document.getElementById('loading');
+                    if (loadEl) {
+                        loadEl.innerHTML = `
+                            <h1 style="color:orange">ACCESS_PENDING</h1>
+                            <p>CREDENTIALS UNDER REVIEW BY ADMINISTRATION.</p>
+                            <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
+                    }
                     return;
                 }
 
-                // 3. ADMIN LINK (Personnel Management)
+                // 3. ADMIN LINK
                 const adminLink = document.getElementById('admin-link');
                 if (adminLink) {
-                    // Only show if user is admin AND approved
                     adminLink.style.display = profile.is_admin ? 'inline-block' : 'none';
                 }
 
                 // 4. UI SETUP
                 if (!profile.is_overseer) {
                     const welcomeEl = document.getElementById('welcome');
-                    if (welcomeEl) welcomeEl.innerText = "IDENTIFIED: " + profile.full_name.toUpperCase();
+                    if (welcomeEl) welcomeEl.innerText = "IDENTIFIED: " + (profile.full_name ? profile.full_name.toUpperCase() : "PERSONNEL");
                 }
                 
                 const lvlEl = document.getElementById('lvl');
                 const deptDisplay = document.getElementById('dept-display');
-                
                 if (lvlEl) lvlEl.innerText = profile.clearance_level;
                 if (deptDisplay) deptDisplay.innerText = profile.department || "UNASSIGNED";
                 
                 // 5. DEPARTMENTAL LOGIC
                 renderDepartmentalMenu(profile.department, profile.is_overseer);
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
+                // FINAL STEP: Hide loading and show content
+                if (document.getElementById('loading')) document.getElementById('loading').style.display = 'none';
+                if (document.getElementById('main-content')) document.getElementById('main-content').style.display = 'block';
             }
         }
 
         function renderDepartmentalMenu(dept, isOverseer) {
-            // Updated to target the new .dashboard-nav class
             const nav = document.querySelector('.dashboard-nav');
-            
+            if (!nav) return;
+
             const modules = {
                 'AD': { label: 'ADMINISTRATIVE_LOG', type: 'admin' },
                 'RAISA': { label: 'INFOSEC_MANIFEST', type: 'infosec' },
@@ -132,7 +139,7 @@
 
                 testContainer.innerHTML = `
                     <select onchange="if(this.value) window.location.href='write.html?type=' + this.value" 
-                            style="width: auto; margin: 0; background: #000; color: gold; border: 1px solid gold;">
+                            style="width: auto; margin: 0; background: #000; color: gold; border: 1px solid gold; font-family: 'VT323';">
                         <option value="">-- TEST_DEPT_MODULES --</option>
                         ${options}
                     </select>
