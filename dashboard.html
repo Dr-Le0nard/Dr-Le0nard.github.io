@@ -62,37 +62,49 @@
                         if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                     }).subscribe();
 
-                // 1. OVERSEER BYPASS (GOD MODE)
+                // 1. TERMINAL ADMINISTRATOR (Logic previously assigned to is_overseer)
+                // This role manages the system backend/God Mode.
                 if (profile.is_overseer) {
                     const welcomeEl = document.getElementById('welcome');
                     if (welcomeEl) {
-                        welcomeEl.innerText = "IDENTIFIED: SYSTEM_OVERSEER";
+                        welcomeEl.innerText = "ACCESS_GRANTED: TERMINAL_ADMINISTRATOR";
+                        welcomeEl.style.color = "var(--terminal-green)";
+                        welcomeEl.style.textShadow = "0 0 15px var(--terminal-green)";
+                    }
+                    // Terminal Admins still get the Module Tester for system validation
+                    renderDepartmentalMenu(profile.department, true); 
+                } 
+                
+                // 2. O5 COUNCIL / DEPT HEAD (Logic previously assigned to is_admin)
+                // This role gets the "Gold" status and approval link.
+                if (profile.is_admin) {
+                    const welcomeEl = document.getElementById('welcome');
+                    if (welcomeEl) {
+                        welcomeEl.innerText = "IDENTIFIED: O5-COUNCIL_MEMBER";
                         welcomeEl.style.color = "gold";
                         welcomeEl.style.textShadow = "0 0 12px gold";
                     }
-                    renderOverseerControls(); 
-                } 
-                
-                // 2. STANDARD APPROVAL CHECK
-                else if (!profile.is_approved) {
+                    const adminLink = document.getElementById('admin-link');
+                    if (adminLink) {
+                        adminLink.style.display = 'inline-block';
+                        adminLink.innerText = "COUNCIL_OVERRIDE";
+                    }
+                }
+
+                // 3. STANDARD APPROVAL CHECK
+                if (!profile.is_approved && !profile.is_overseer) {
                     const loadEl = document.getElementById('loading');
                     if (loadEl) {
                         loadEl.innerHTML = `
-                            <h1 style="color:orange">ACCESS_PENDING</h1>
-                            <p>CREDENTIALS UNDER REVIEW BY ADMINISTRATION.</p>
+                            <h1 style="color:gold; text-shadow: 0 0 10px gold;">PENDING_COUNCIL_REVIEW</h1>
+                            <p>CREDENTIALS UNDER REVIEW BY THE O5 COUNCIL.</p>
                             <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
                     }
                     return;
                 }
 
-                // 3. ADMIN LINK
-                const adminLink = document.getElementById('admin-link');
-                if (adminLink) {
-                    adminLink.style.display = profile.is_admin ? 'inline-block' : 'none';
-                }
-
-                // 4. UI SETUP
-                if (!profile.is_overseer) {
+                // 4. UI SETUP (For Non-Admin/Non-Overseer)
+                if (!profile.is_admin && !profile.is_overseer) {
                     const welcomeEl = document.getElementById('welcome');
                     if (welcomeEl) welcomeEl.innerText = "IDENTIFIED: " + (profile.full_name ? profile.full_name.toUpperCase() : "PERSONNEL");
                 }
@@ -102,8 +114,10 @@
                 if (lvlEl) lvlEl.innerText = profile.clearance_level;
                 if (deptDisplay) deptDisplay.innerText = profile.department || "UNASSIGNED";
                 
-                // 5. DEPARTMENTAL LOGIC
-                renderDepartmentalMenu(profile.department, profile.is_overseer);
+                // 5. DEPARTMENTAL LOGIC (Standard users get their dept link)
+                if (!profile.is_overseer) {
+                    renderDepartmentalMenu(profile.department, false);
+                }
 
                 // FINAL STEP: Hide loading and show content
                 if (document.getElementById('loading')) document.getElementById('loading').style.display = 'none';
@@ -111,7 +125,7 @@
             }
         }
 
-        function renderDepartmentalMenu(dept, isOverseer) {
+        function renderDepartmentalMenu(dept, isTerminalAdmin) {
             const nav = document.querySelector('.dashboard-nav');
             if (!nav) return;
 
@@ -127,7 +141,8 @@
                 'DSIS': { label: 'INTEL_BRIEFING', type: 'intel' }
             };
 
-            if (isOverseer) {
+            // Terminal Administrators get the dropdown to test all modules
+            if (isTerminalAdmin) {
                 const testContainer = document.createElement('div');
                 testContainer.style.marginLeft = "10px";
                 testContainer.style.borderLeft = "1px solid gold";
@@ -140,21 +155,19 @@
                 testContainer.innerHTML = `
                     <select onchange="if(this.value) window.location.href='write.html?type=' + this.value" 
                             style="width: auto; margin: 0; background: #000; color: gold; border: 1px solid gold; font-family: 'VT323';">
-                        <option value="">-- TEST_DEPT_MODULES --</option>
+                        <option value="">-- SYSTEM_MODULE_TESTER --</option>
                         ${options}
                     </select>
                 `;
                 nav.appendChild(testContainer);
-            } else if (dept && modules[dept]) {
+            } 
+            // Standard Dept members (and O5s assigned to a dept) see their specific log
+            else if (dept && modules[dept]) {
                 const link = document.createElement('a');
                 link.href = `write.html?type=${modules[dept].type}`;
                 link.innerText = modules[dept].label;
                 nav.appendChild(link);
             }
-        }
-
-        function renderOverseerControls() {
-            console.log("OS_CONTROLS_LOADED");
         }
 
         async function logout() {
