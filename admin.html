@@ -112,7 +112,7 @@
                         <p>DEPT: [${u.department || 'NONE'}] | CL: [${u.clearance_level}]</p>
                         <button onclick="revokeAccess('${u.id}')" 
                                 style="color: #ff4444; border-color: #ff4444; width: 100%;"
-                                ${(u.is_admin || isMe) ? 'disabled' : ''}>
+                                ${(isMe || (u.is_admin && !profile.is_overseer)) ? 'disabled' : ''}
                             ${isMe ? 'YOU (ROOT)' : 'REVOKE_ACCESS'}
                         </button>
                     </div>`;

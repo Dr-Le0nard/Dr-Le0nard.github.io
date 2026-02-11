@@ -43,11 +43,9 @@
         const reportModule = urlParams.get('type') || 'general';
 
         async function initializeForm() {
-            // 1. Auth Check
             const { data: { user } } = await _supabase.auth.getUser();
             if (!user) { window.location.href = "index.html"; return; }
 
-            // 2. Fetch Profile for Department/Name
             const { data: profile } = await _supabase
                 .from('profiles')
                 .select('*')
@@ -55,8 +53,6 @@
                 .single();
             
             currentUserProfile = profile;
-
-            // 3. UI Customization
             document.getElementById('form-header').innerText = `NEW_${reportModule.toUpperCase()}_ENTRY`;
             setupExtraFields();
         }
@@ -74,53 +70,45 @@
                 container.innerHTML = `
                     <label>PATIENT_ID:</label>
                     <input type="text" id="meta_patient" placeholder="e.g. D-9022">
-                    <label>TREATMENT_TYPE:</label>
-                    <input type="text" id="meta_treatment" placeholder="e.g. Sedation">
-                `;
-            } else if (reportModule === 'maintenance') {
-                container.innerHTML = `
-                    <label>SITE_ZONE:</label>
-                    <input type="text" id="meta_zone" placeholder="e.g. Sector-4">
                 `;
             }
         }
 
         async function submitReport() {
-            const title = document.getElementById('title').value;
-            const content = document.getElementById('content').value;
+            const titleInput = document.getElementById('title').value;
+            const contentInput = document.getElementById('content').value;
             const cl = document.getElementById('clearance_level').value;
 
-            if(!title || !content) {
+            if(!titleInput || !contentInput) {
                 alert("CRITICAL_ERROR: DATA_MISSING");
                 return;
             }
 
-            // Package metadata dynamically from whatever extra fields exist
-            const metadata = {};
-            const inputs = document.querySelectorAll('#dynamic-fields input');
-            inputs.forEach(input => {
-                const key = input.id.replace('meta_', '');
-                metadata[key] = input.value;
+            // Consolidate extra fields into the top of the content for readability
+            let finalizedContent = "";
+            const extraInputs = document.querySelectorAll('#dynamic-fields input');
+            extraInputs.forEach(input => {
+                const label = input.previousElementSibling.innerText;
+                finalizedContent += `${label} ${input.value}\n`;
             });
+            finalizedContent += "\n" + contentInput;
 
+            // POINTED TO 'articles' table with correct column names
             const { error } = await _supabase
-                .from('reports') // Changed from 'articles' to your new 'reports' table
+                .from('articles') 
                 .insert([{ 
-                    title: title, 
-                    content: content, 
-                    author_id: currentUserProfile.id,
-                    author_name: currentUserProfile.full_name,
-                    dept_code: currentUserProfile.department, // Files under user's actual dept
-                    report_type: reportModule, // Files under the type selected in dashboard
-                    clearance_level: parseInt(cl),
-                    metadata: metadata // JSONB block
+                    title: titleInput, 
+                    content: finalizedContent, 
+                    author: currentUserProfile.full_name,
+                    department: currentUserProfile.department, 
+                    required_clearance: parseInt(cl)
                 }]);
 
             if (error) {
                 alert("TRANSMISSION_FAILED: " + error.message);
             } else {
                 alert("TRANSMISSION_SUCCESSFUL");
-                window.location.href = "dashboard.html";
+                window.location.href = "archive.html"; // Send them to the archive to see their work
             }
         }
 

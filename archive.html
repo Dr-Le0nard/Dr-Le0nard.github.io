@@ -18,6 +18,7 @@
                 <option value="ScD">SCIENTIFIC (ScD)</option>
                 <option value="MD">MEDICAL (MD)</option>
                 <option value="RAISA">INFOSEC (RAISA)</option>
+                <option value="AD">ADMINISTRATIVE (AD)</option>
             </select>
         </div>
     </nav>
@@ -34,11 +35,12 @@
             </tr>
         </thead>
         <tbody id="report-list">
-            </tbody>
+        </tbody>
     </table>
 
     <script>
-        let isOverseer = false;
+        let isTerminalAdmin = false;
+        let isO5 = false;
 
         async function initArchive() {
             const { data: { user } } = await _supabase.auth.getUser();
@@ -46,9 +48,12 @@
 
             const { data: profile } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
             
-            if (profile.is_overseer) {
-                isOverseer = true;
+            // Checking for both Terminal Admin and O5 status for the filter view
+            if (profile.is_overseer || (profile.is_admin && profile.department === 'OVERSEER')) {
+                isTerminalAdmin = true;
                 document.getElementById('overseer-filters').style.display = 'block';
+            } else if (profile.is_admin) {
+                isO5 = true;
             }
             
             fetchReports();
@@ -58,43 +63,52 @@
             const list = document.getElementById('report-list');
             list.innerHTML = "<tr><td colspan='6'>RETRIEVING_DATA...</td></tr>";
 
-            // 1. Get current user profile data
             const { data: { user } } = await _supabase.auth.getUser();
             const { data: profile } = await _supabase.from('profiles').select('department, clearance_level').eq('id', user.id).single();
 
-            // 2. Start the query
-            let query = _supabase.from('reports').select('*').order('created_at', { ascending: false });
+            // POINTED TO 'articles' table instead of 'reports'
+            let query = _supabase.from('articles').select('*').order('created_at', { ascending: false });
 
-            // 3. APPLY CLIENT-SIDE FILTERS (To match RLS)
-            if (!isOverseer) {
-                // Normal users only see their department and their clearance or lower
-                query = query.eq('dept_code', profile.department)
-                            .lte('clearance_level', profile.clearance_level);
+            // APPLY FILTERS (Matched to your new RLS Logic)
+            if (!isTerminalAdmin) {
+                if (isO5) {
+                    // O5s see their whole department
+                    query = query.eq('department', profile.department);
+                } else {
+                    // Standard personnel see their dept + clearance check
+                    query = query.eq('department', profile.department)
+                                 .lte('required_clearance', profile.clearance_level);
+                }
             } else {
-                // Overseer filters (the dropdown)
+                // Overseer/Terminal Admin filters
                 const filter = document.getElementById('dept-filter').value;
                 if (filter !== "ALL") {
-                    query = query.eq('dept_code', filter);
+                    query = query.eq('department', filter);
                 }
             }
 
             const { data: reports, error } = await query;
 
             if (error) {
-                list.innerHTML = `<tr><td colspan='6' style='color:red'>QUERY_ERROR: ${error.message}</td></tr>`;
+                list.innerHTML = `<tr><td colspan='6' style='color:var(--error-red)'>QUERY_ERROR: ${error.message}</td></tr>`;
                 return;
             }
 
             list.innerHTML = "";
+            if (reports.length === 0) {
+                list.innerHTML = "<tr><td colspan='6'>NO_RECORDS_FOUND_UNDER_CURRENT_CLEARANCE</td></tr>";
+                return;
+            }
+
             reports.forEach(report => {
                 const date = new Date(report.created_at).toLocaleDateString();
                 list.innerHTML += `
                     <tr>
                         <td>${date}</td>
-                        <td>[${report.dept_code}]</td>
-                        <td>LEVEL_${report.clearance_level}</td>
-                        <td style="color:var(--primary-color)">${report.title}</td>
-                        <td>${report.author_name || 'UNKNOWN'}</td>
+                        <td>[${report.department}]</td>
+                        <td>LEVEL_${report.required_clearance}</td>
+                        <td style="color:var(--terminal-green)">${report.title || 'UNTITLED_FILE'}</td>
+                        <td>${report.author || 'UNKNOWN'}</td>
                         <td><button onclick="viewReport('${report.id}')">OPEN_FILE</button></td>
                     </tr>
                 `;
