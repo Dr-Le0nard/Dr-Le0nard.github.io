@@ -86,8 +86,14 @@ h1 {
     color: #fff !important;
 }
 
-/* --- NAVIGATION MENU (OWN LINE) --- */
+/* --- UNIVERSAL LINK RESET (Fixes the Purple Link Problem) --- */
+a, a:visited, a:active {
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+}
 
+/* --- PRIMARY DASHBOARD NAV (The solid green buttons) --- */
 .dashboard-nav {
     margin: 15px 0 30px 0;
     border-top: 1px solid var(--terminal-green);
@@ -101,7 +107,6 @@ h1 {
 .dashboard-nav a {
     color: var(--bg-black);
     background-color: var(--terminal-green);
-    text-decoration: none;
     padding: 5px 15px;
     font-weight: bold;
     font-family: 'Courier New', Courier, monospace;
@@ -111,6 +116,43 @@ h1 {
 .dashboard-nav a:hover {
     background-color: #00cc33;
     box-shadow: 0 0 10px var(--terminal-green);
+    color: var(--bg-black);
+}
+
+/* --- SECONDARY NAVS (Used in Personnel, Archive, etc.) --- */
+/* This styles standard <nav> tags that don't have the .dashboard-nav class */
+nav:not(.dashboard-nav) {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+nav:not(.dashboard-nav) a {
+    color: var(--terminal-green);
+    border: 1px solid var(--terminal-green);
+    background-color: rgba(0, 255, 65, 0.1); /* Very subtle green tint */
+    padding: 4px 12px;
+    font-size: 0.9rem;
+    font-family: 'Courier New', Courier, monospace;
+    transition: all 0.2s;
+}
+
+nav:not(.dashboard-nav) a:hover {
+    background-color: var(--terminal-green);
+    color: var(--bg-black);
+    box-shadow: 0 0 8px var(--terminal-green);
+}
+
+/* Ensure Admin Override stays Red regardless of where it appears */
+#admin-link, #admin-link:visited {
+    color: var(--error-red) !important;
+    border: 1px solid var(--error-red) !important;
+    background-color: transparent !important;
+}
+
+#admin-link:hover {
+    background-color: var(--error-red) !important;
+    color: var(--bg-black) !important;
 }
 
 /* Special styling for Admin Override link */
