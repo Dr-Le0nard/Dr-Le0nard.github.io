@@ -18,7 +18,7 @@
         <div class="header-row">
             <div class="identity-group">
                 <h1 id="welcome">WELCOME: [REDACTED]</h1>
-                <div class="clearance-badge">
+                <div class="clearance-badge" id="badge-container">
                     SECURITY_CLEARANCE: LEVEL <span id="lvl">0</span> // <span id="dept-display">PENDING_DEPT</span>
                 </div>
             </div>
@@ -62,67 +62,81 @@
                         if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                     }).subscribe();
 
-                // 1. TERMINAL ADMINISTRATOR (Logic previously assigned to is_overseer)
-                // This role manages the system backend/God Mode.
-                if (profile.is_overseer) {
-                    const welcomeEl = document.getElementById('welcome');
-                    if (welcomeEl) {
-                        welcomeEl.innerText = "ACCESS_GRANTED: TERMINAL_ADMINISTRATOR";
-                        welcomeEl.style.color = "var(--terminal-green)";
-                        welcomeEl.style.textShadow = "0 0 15px var(--terminal-green)";
-                    }
-                    // Terminal Admins still get the Module Tester for system validation
+                const welcomeEl = document.getElementById('welcome');
+                const adminLink = document.getElementById('admin-link');
+                const badge = document.getElementById('badge-container');
+
+                // 1. TERMINAL ADMINISTRATOR (System Manager)
+                if (profile.is_terminal_admin) {
+                    welcomeEl.innerText = "ACCESS_GRANTED: TERMINAL_ADMINISTRATOR";
+                    welcomeEl.style.color = "var(--alert-gold)";
+                    welcomeEl.style.textShadow = "0 0 15px var(--alert-gold)";
+                    
+                    badge.innerHTML = `<span style="color: var(--alert-gold)">[ROOT_SYSTEM_ACCESS]</span> // TECHNICAL_ADMIN`;
+                    badge.style.borderColor = "var(--alert-gold)";
+                    
+                    adminLink.style.display = 'inline-block';
+                    adminLink.innerText = "SYSTEM_OVERRIDE";
+                    
                     renderDepartmentalMenu(profile.department, true); 
                 } 
                 
-                // 2. O5 COUNCIL / DEPT HEAD (Logic previously assigned to is_admin)
-                // This role gets the "Gold" status and approval link.
-                if (profile.is_admin) {
-                    const welcomeEl = document.getElementById('welcome');
-                    if (welcomeEl) {
-                        welcomeEl.innerText = "IDENTIFIED: O5-COUNCIL_MEMBER";
-                        welcomeEl.style.color = "gold";
-                        welcomeEl.style.textShadow = "0 0 12px gold";
-                    }
-                    const adminLink = document.getElementById('admin-link');
-                    if (adminLink) {
-                        adminLink.style.display = 'inline-block';
-                        adminLink.innerText = "COUNCIL_OVERRIDE";
-                    }
-                }
+                // 2. O5-X (Council Chairman)
+                else if (profile.is_overseer) {
+                    welcomeEl.innerText = "IDENTIFIED: O5-COUNCIL_CHAIRMAN";
+                    welcomeEl.style.color = "var(--error-red)";
+                    welcomeEl.style.textShadow = "0 0 15px var(--error-red)";
+                    
+                    badge.innerHTML = `LEVEL 5 // O5_COUNCIL_CHAIRMAN`;
+                    badge.style.borderColor = "var(--error-red)";
 
-                // 3. STANDARD APPROVAL CHECK
-                if (!profile.is_approved && !profile.is_overseer) {
-                    const loadEl = document.getElementById('loading');
-                    if (loadEl) {
-                        loadEl.innerHTML = `
-                            <h1 style="color:gold; text-shadow: 0 0 10px gold;">PENDING_COUNCIL_REVIEW</h1>
-                            <p>CREDENTIALS UNDER REVIEW BY THE O5 COUNCIL.</p>
-                            <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
-                    }
-                    return;
-                }
-
-                // 4. UI SETUP (For Non-Admin/Non-Overseer)
-                if (!profile.is_admin && !profile.is_overseer) {
-                    const welcomeEl = document.getElementById('welcome');
-                    if (welcomeEl) welcomeEl.innerText = "IDENTIFIED: " + (profile.full_name ? profile.full_name.toUpperCase() : "PERSONNEL");
-                }
-                
-                const lvlEl = document.getElementById('lvl');
-                const deptDisplay = document.getElementById('dept-display');
-                if (lvlEl) lvlEl.innerText = profile.clearance_level;
-                if (deptDisplay) deptDisplay.innerText = profile.department || "UNASSIGNED";
-                
-                // 5. DEPARTMENTAL LOGIC (Standard users get their dept link)
-                if (!profile.is_overseer) {
+                    adminLink.style.display = 'inline-block';
+                    adminLink.innerText = "CHAIRMAN_OVERRIDE";
+                    
                     renderDepartmentalMenu(profile.department, false);
                 }
 
-                // FINAL STEP: Hide loading and show content
-                if (document.getElementById('loading')) document.getElementById('loading').style.display = 'none';
-                if (document.getElementById('main-content')) document.getElementById('main-content').style.display = 'block';
+                // 3. STANDARD O5 / DEPT HEAD
+                else if (profile.is_admin) {
+                    welcomeEl.innerText = "IDENTIFIED: O5-COUNCIL_MEMBER";
+                    welcomeEl.style.color = "gold";
+                    welcomeEl.style.textShadow = "0 0 12px gold";
+
+                    adminLink.style.display = 'inline-block';
+                    adminLink.innerText = "COUNCIL_OVERRIDE";
+                    
+                    setStandardIdentity(profile);
+                    renderDepartmentalMenu(profile.department, false);
+                }
+
+                // 4. STANDARD PERSONNEL
+                else {
+                    if (!profile.is_approved) {
+                        showPendingScreen();
+                        return;
+                    }
+                    welcomeEl.innerText = "IDENTIFIED: " + (profile.full_name ? profile.full_name.toUpperCase() : "PERSONNEL");
+                    setStandardIdentity(profile);
+                    renderDepartmentalMenu(profile.department, false);
+                }
+
+                // Show Content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
             }
+        }
+
+        function setStandardIdentity(profile) {
+            document.getElementById('lvl').innerText = profile.clearance_level;
+            document.getElementById('dept-display').innerText = profile.department || "UNASSIGNED";
+        }
+
+        function showPendingScreen() {
+            const loadEl = document.getElementById('loading');
+            loadEl.innerHTML = `
+                <h1 style="color:gold; text-shadow: 0 0 10px gold;">PENDING_COUNCIL_REVIEW</h1>
+                <p>CREDENTIALS UNDER REVIEW BY THE O5 COUNCIL.</p>
+                <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
         }
 
         function renderDepartmentalMenu(dept, isTerminalAdmin) {
@@ -141,12 +155,9 @@
                 'DSIS': { label: 'INTEL_BRIEFING', type: 'intel' }
             };
 
-            // Terminal Administrators get the dropdown to test all modules
             if (isTerminalAdmin) {
                 const testContainer = document.createElement('div');
-                testContainer.style.marginLeft = "10px";
-                testContainer.style.borderLeft = "1px solid gold";
-                testContainer.style.paddingLeft = "10px";
+                testContainer.style.cssText = "margin-left:10px; border-left:1px solid gold; padding-left:10px;";
                 
                 let options = Object.keys(modules).map(key => 
                     `<option value="${modules[key].type}">${modules[key].label}</option>`
@@ -160,9 +171,7 @@
                     </select>
                 `;
                 nav.appendChild(testContainer);
-            } 
-            // Standard Dept members (and O5s assigned to a dept) see their specific log
-            else if (dept && modules[dept]) {
+            } else if (dept && modules[dept]) {
                 const link = document.createElement('a');
                 link.href = `write.html?type=${modules[dept].type}`;
                 link.innerText = modules[dept].label;

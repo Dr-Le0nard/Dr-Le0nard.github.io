@@ -27,6 +27,19 @@
                 <label>FULL_NAME:</label>
                 <input type="text" id="fullname" placeholder="Dr. Bright">
             </div>
+            <div class="input-group">
+                <label>SELECT_DEPARTMENT:</label>
+                <select id="dept-choice" style="width: 100%; background: black; color: var(--terminal-green); border: 1px solid var(--terminal-green); font-family: 'VT323'; padding: 5px;">
+                    <option value="">-- CHOOSE_UNIT --</option>
+                    <option value="ScD">Scientific (ScD)</option>
+                    <option value="MD">Medical (MD)</option>
+                    <option value="SD">Security (SD)</option>
+                    <option value="EcD">Engineering (EcD)</option>
+                    <option value="RAISA">Infosec (RAISA)</option>
+                    <option value="AD">Administrative (AD)</option>
+                    <option value="ISD">Intelligence (ISD)</option>
+                </select>
+            </div>
         </div>
 
         <div class="auth-actions">
@@ -48,11 +61,10 @@
             document.getElementById('toggle-text').innerText = isRegistering ? "[BACK_TO_LOGIN]" : "[REQUEST_NEW_ACCESS]";
         }
 
-        // Typewriter Effect Function
         function typeWriter(text, elementId, speed = 30) {
             let i = 0;
             const element = document.getElementById(elementId);
-            element.innerHTML = ""; // Clear existing
+            element.innerHTML = ""; 
             function type() {
                 if (i < text.length) {
                     element.innerHTML += text.charAt(i);
@@ -63,17 +75,8 @@
             type();
         }
 
-        document.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAuth();
-            }
-        });
-
-        // NEW: Emergency check for returning banned users
         async function checkInitialBanStatus() {
             const { data: { user } } = await _supabase.auth.getUser();
-            
             if (user) {
                 const { data: profile } = await _supabase
                     .from('profiles')
@@ -82,14 +85,11 @@
                     .maybeSingle();
 
                 if (profile && profile.is_banned) {
-                    // Trigger the Red Screen immediately 
-                    // (Use the same document.body.innerHTML block from your handleAuth)
                     showRedScreen(user.id); 
                 }
             }
         }
 
-        // Helper function so you don't repeat code
         function showRedScreen(userId) {
             document.body.innerHTML = `
                 <div class="banned-overlay" style="background: #200; color: #f00; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: monospace; border: 5px solid #f00;">
@@ -118,7 +118,6 @@
             };
         }
 
-        // Call this as soon as the script loads
         checkInitialBanStatus();
 
         async function handleAuth() {
@@ -132,10 +131,24 @@
 
             if (isRegistering) {
                 const fullName = document.getElementById('fullname').value;
+                const deptChoice = document.getElementById('dept-choice').value;
+
+                if (!fullName || !deptChoice) {
+                    errorMsg.innerText = "ERROR: ALL_FIELDS_REQUIRED";
+                    submitBtn.innerText = "RETRY";
+                    submitBtn.disabled = false;
+                    return;
+                }
+
                 const { data, error } = await _supabase.auth.signUp({ 
                     email, 
                     password,
-                    options: { data: { full_name: fullName } }
+                    options: { 
+                        data: { 
+                            full_name: fullName,
+                            department: deptChoice 
+                        } 
+                    }
                 });
                 
                 if (error) { 
@@ -148,11 +161,10 @@
                 document.querySelector('.terminal-box').innerHTML = `
                     <h1>REQUEST_SENT</h1>
                     <p>Verification link dispatched to: <br><strong>${email}</strong></p>
-                    <p>Verify via email, then return to login.</p>
+                    <p>Departmental O5 notified of pending request.</p>
                     <button onclick="location.reload()">RETURN_TO_LOGIN</button>
                 `;
             } else {
-                // --- LOGIN LOGIC ---
                 const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
                 
                 if (error) { 
@@ -160,49 +172,17 @@
                     submitBtn.innerText = "LOGIN";
                     submitBtn.disabled = false;
                 } else { 
-                    // 1. Check if the user is BANNED
                     const { data: profile } = await _supabase
                         .from('profiles')
                         .select('is_banned')
                         .eq('id', data.user.id)
                         .maybeSingle();
 
-                    // --- THE FIX STARTS HERE ---
                     if (profile && profile.is_banned) {
-                        // Wipe the body and show the red screen instead of redirecting
-                        document.body.innerHTML = `
-                            <div class="banned-overlay" style="background: #200; color: #f00; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: monospace; border: 5px solid #f00;">
-                                <div class="flicker-text" style="font-size: 3rem; font-weight: bold;">TERMINAL_LOCKED</div>
-                                <div class="warning-box" style="border: 2px solid #f00; padding: 20px; margin: 20px; background: rgba(255,0,0,0.1);">
-                                    <h2>[ SECURITY_BREACH_DETECTED ]</h2>
-                                    <p id="typewriter-revocation"></p>
-                                    <hr style="border: 1px solid #f00;">
-                                    <p id="typewriter-threat" style="color: #ff5555;"></p>
-                                </div>
-                                <button id="ack-btn" style="background: #f00; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; display: none;">
-                                    ACKNOWLEDGE_TERMINATION
-                                </button>
-                            </div>`;
-                        
-                        // Trigger the text effects
-                        typeWriter(`USER_ID: ${data.user.id} | STATUS: PERMANENT_REVOCATION`, "typewriter-revocation", 40);
-                        
-                        setTimeout(() => {
-                            typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
-                            document.getElementById('ack-btn').style.display = "block";
-                        }, 2000);
-
-                        // Handle sign out ONLY on click
-                        document.getElementById('ack-btn').onclick = async () => {
-                            await _supabase.auth.signOut();
-                            location.href = "index.html"; 
-                        };
-
-                        return; // CRITICAL: This stops the function from running the redirect below
+                        showRedScreen(data.user.id);
+                        return;
                     }
-                    // --- THE FIX ENDS HERE ---
 
-                    // 2. Not banned? Check/Create profile and go to Dashboard
                     await checkAndCreateProfile(data.user);
                     window.location.href = "dashboard.html";
                 }
@@ -218,9 +198,12 @@
 
             if (!profile) {
                 const fullName = user.user_metadata.full_name || "REDACTED_NAME";
+                const department = user.user_metadata.department || null;
+                
                 await _supabase.from('profiles').insert([{ 
                     id: user.id, 
-                    full_name: fullName, 
+                    full_name: fullName,
+                    department: department,
                     is_approved: false, 
                     is_banned: false,
                     clearance_level: 0 

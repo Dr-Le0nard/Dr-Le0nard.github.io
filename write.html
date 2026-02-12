@@ -14,8 +14,8 @@
         <a href="dashboard.html">BACK_TO_DASHBOARD</a>
     </nav>
 
-    <div class="input-container">
-        <div id="dynamic-fields" style="border-left: 2px solid var(--primary-color); padding-left: 15px; margin-bottom: 20px;">
+    <div class="input-container" style="display: flex; flex-direction: column; width: 100%; max-width: 800px;">
+        <div id="dynamic-fields" style="border-left: 2px solid var(--terminal-green); padding-left: 15px; margin-bottom: 20px;">
             </div>
 
         <label>DOCUMENT_TITLE:</label>
@@ -34,7 +34,7 @@
         <label>DOCUMENT_CONTENT:</label>
         <textarea id="content" rows="15" placeholder="START DATA ENTRY..."></textarea>
 
-        <button onclick="submitReport()">TRANSMIT_TO_SECURE_SERVERS</button>
+        <button onclick="submitReport()" style="margin-top: 25px; width: 100%;">TRANSMIT_TO_SECURE_SERVERS</button>
     </div>
 
     <script>

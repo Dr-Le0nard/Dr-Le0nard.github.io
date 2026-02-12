@@ -35,6 +35,14 @@ body::before {
 }
 
 /* --- HEADER & IDENTITY LAYOUT --- */
+h1 {
+    margin: 0;
+    padding-bottom: 5px;
+    text-shadow: 0 0 8px var(--terminal-green);
+    line-height: 1.4; 
+    padding-top: 10px; /* Basal nudge to stop text hitting the ceiling */
+}
+
 .header-row {
     display: flex;
     justify-content: space-between;
@@ -43,62 +51,49 @@ body::before {
     margin-bottom: 5px;
 }
 
-.identity-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-h1 {
-    margin: 0;
-    padding-bottom: 5px;
-    text-shadow: 0 0 8px var(--terminal-green);
-}
-
 .clearance-badge {
     border: 2px solid var(--terminal-green);
-    display: inline-flex; /* Centering fix */
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 12px 2px 12px; /* Offset for font baseline */
+    height: 35px;
+    padding: 4px 15px 0 15px; /* Precision shift */
     margin: 5px 0;
     font-weight: bold;
     background-color: var(--dark-green);
     width: fit-content;
 }
 
-/* --- UNIVERSAL BUTTON STYLING (The Fix) --- */
-button {
+/* --- UNIVERSAL BUTTON & INPUT CENTERING --- */
+/* (Textarea excluded here to fix placeholder alignment) */
+button, input, select, .dashboard-nav a, nav:not(.dashboard-nav) a {
     font-family: 'VT323', monospace;
-    background: var(--bg-black);
-    color: var(--terminal-green);
-    border: 1px solid var(--terminal-green);
-    
-    /* Centering Logic */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    
-    /* Vertical alignment offset: more on top, less on bottom */
-    padding: 12px 16px 8px 16px; 
-    
     text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
     letter-spacing: 1px;
     font-size: 1.1rem;
     outline: none;
-    line-height: 1; /* Prevents text-box stretching */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px; 
+    padding: 4px 16px 0 16px; /* Precision Basal Shift */
+    box-sizing: border-box;
+    line-height: 1.5; 
 }
 
-button:hover:not(:disabled) {
-    background: var(--terminal-green);
-    color: var(--bg-black);
+button {
+    background: var(--bg-black);
+    color: var(--terminal-green);
+    border: 1px solid var(--terminal-green);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* Active State: Forces text to stay black when clicked */
+button:hover:not(:disabled), button:active {
+    background: var(--terminal-green) !important;
+    color: var(--bg-black) !important;
     box-shadow: 0 0 10px var(--terminal-green);
-}
-
-button:active {
-    transform: scale(0.98);
 }
 
 button:disabled {
@@ -108,24 +103,33 @@ button:disabled {
     color: #444;
 }
 
-/* --- TERMINATE / BAN BUTTONS (RED) --- */
-.terminate-btn, button[onclick*="revokeAccess"], button[onclick*="revokeAccess"]:visited {
-    color: var(--error-red) !important;
-    border-color: var(--error-red) !important;
-    background-color: transparent !important;
-}
-
-.terminate-btn:hover, button[onclick*="revokeAccess"]:hover:not(:disabled) {
-    background-color: var(--error-red) !important;
-    color: var(--bg-black) !important;
-    box-shadow: 0 0 15px var(--error-red) !important;
-}
-
-/* --- UNIVERSAL LINK RESET --- */
-a, a:visited, a:active {
-    color: inherit;
-    text-decoration: none;
+/* --- TEXTAREA FIX (Stops placeholder from flying out) --- */
+textarea {
+    background-color: #000;
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+    font-family: 'VT323', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 1.1rem;
+    padding: 12px;
+    line-height: 1.4;
+    display: block;   
+    width: 100%;
+    min-height: 200px;
+    box-sizing: border-box;
+    margin-bottom: 15px;
     outline: none;
+    resize: vertical;
+}
+
+/* --- INPUTS & SELECTS --- */
+input, select {
+    background-color: #000;
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+    width: 100%;
+    margin-bottom: 15px;
 }
 
 /* --- NAVIGATION LAYOUTS --- */
@@ -136,54 +140,49 @@ a, a:visited, a:active {
     padding: 10px 0;
     display: flex;
     gap: 10px;
-    width: 100%;
 }
 
-.dashboard-nav a {
-    color: var(--bg-black);
-    background-color: var(--terminal-green);
-    padding: 8px 15px 4px 15px; /* Centering offset */
+/* STRICT COLOR LOCK: Keeps text black even after clicking */
+.dashboard-nav a, 
+.dashboard-nav a:visited, 
+.dashboard-nav a:active {
+    color: var(--bg-black) !important;
+    background-color: var(--terminal-green) !important;
     font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    transition: background 0.2s;
+    text-decoration: none;
 }
 
 .dashboard-nav a:hover {
-    background-color: #00cc33;
+    opacity: 0.8;
     box-shadow: 0 0 10px var(--terminal-green);
 }
 
-nav:not(.dashboard-nav) {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 10px;
-}
-
-nav:not(.dashboard-nav) a {
-    color: var(--terminal-green);
+nav:not(.dashboard-nav) a, 
+nav:not(.dashboard-nav) a:visited {
+    color: var(--terminal-green) !important;
     border: 1px solid var(--terminal-green);
     background-color: rgba(0, 255, 65, 0.1);
-    padding: 6px 12px 2px 12px; /* Centering offset */
     font-size: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    transition: all 0.2s;
+    height: 32px; 
 }
 
-/* --- INPUTS & TABLES --- */
-input, textarea, select {
-    background-color: #000;
-    border: 1px solid var(--terminal-green);
+/* --- RED / TERMINATE BUTTONS --- */
+.terminate-btn, button[onclick*="revokeAccess"] {
+    color: var(--error-red) !important;
+    border-color: var(--error-red) !important;
+    background-color: transparent !important;
+}
+
+.terminate-btn:hover {
+    background-color: var(--error-red) !important;
+    color: var(--bg-black) !important;
+}
+
+/* --- UNIVERSAL LINK RESET --- */
+a, a:visited, a:active {
     color: var(--terminal-green);
-    padding: 10px 10px 6px 10px; /* Centering offset */
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 15px;
+    text-decoration: none;
     outline: none;
-    font-family: 'VT323', monospace;
-    font-size: 1.1rem;
-    line-height: 1;
 }
 
 /* --- GRID & CARDS --- */
@@ -200,7 +199,7 @@ input, textarea, select {
     background: rgba(0, 59, 0, 0.05);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 10px;
 }
 
 /* --- SYSTEM UTILITIES --- */

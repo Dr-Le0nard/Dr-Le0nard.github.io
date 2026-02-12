@@ -9,9 +9,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>ADMIN_TERMINAL_OVERRIDE</h1>
+    <h1 id="admin-header">ADMIN_TERMINAL_OVERRIDE</h1>
     <nav><a href="dashboard.html">BACK_TO_DASHBOARD</a></nav>
     
+    <section id="alert-section" style="display:none; border: 2px solid var(--alert-gold); padding: 15px; margin: 20px 0; background: rgba(255, 215, 0, 0.1);">
+        <h2 style="color: var(--alert-gold); margin-top: 0;">[!] ADMINISTRATIVE_REASSIGNMENT_ALERTS</h2>
+        <div id="flagged-list" class="admin-grid"></div>
+    </section>
+
     <section style="margin-bottom: 30px;">
         <label>FILTER_PERSONNEL_DATABASE:</label>
         <input type="text" id="user-search" placeholder="ENTER_NAME_OR_ID..." onkeyup="filterUsers()">
@@ -38,45 +43,80 @@
             if (!user) { window.location.href = "index.html"; return; }
             
             currentUserId = user.id;
-
             const { data: me } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
             
-            if (!me || !me.is_admin) {
+            if (!me || (!me.is_admin && !me.is_terminal_admin && !me.is_overseer)) {
                 alert("ACCESS_DENIED: ADMINISTRATIVE_PRIVILEGES_REQUIRED");
                 window.location.href = "dashboard.html";
                 return;
             }
 
             myProfile = me;
+            if (me.is_terminal_admin) {
+                // We add a little padding-top here to manually nudge the header down if needed
+                const header = document.getElementById('admin-header');
+                header.innerText = "ROOT_SYSTEM_OVERRIDE";
+                header.style.paddingTop = "10px"; 
+                loadFlags();
+            }
+            
             loadPending();
             loadActiveUsers();
         }
 
-        async function loadPending() {
-            const { data: pending, error } = await _supabase
+        async function loadFlags() {
+            const { data: flagged } = await _supabase
                 .from('profiles')
                 .select('*')
-                .eq('is_approved', false)
-                .eq('is_banned', false); 
+                .not('admin_notice', 'is', null);
 
+            if (flagged && flagged.length > 0) {
+                const container = document.getElementById('flagged-list');
+                const section = document.getElementById('alert-section');
+                section.style.display = "block";
+                container.innerHTML = "";
+
+                flagged.forEach(u => {
+                    container.innerHTML += `
+                        <div class="scp-card" style="border-color: var(--alert-gold);">
+                            <p style="color: var(--alert-gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
+                            <p><strong>USER:</strong> ${u.full_name}</p>
+                            <p><strong>CURRENT_DEPT:</strong> ${u.department || 'NONE'}</p>
+                            <button onclick="clearFlag('${u.id}')" class="flag-resolve-btn">RESOLVE_FLAG</button>
+                        </div>`;
+                });
+            }
+        }
+
+        async function loadPending() {
+            let query = _supabase.from('profiles').select('*')
+                .eq('is_approved', false)
+                .eq('is_banned', false);
+
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+                query = query.eq('department', myProfile.department);
+            }
+
+            const { data: pending, error } = await query;
             const container = document.getElementById('pending-list');
-            if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
             
-            container.innerHTML = pending.length === 0 ? "NO_PENDING_REQUESTS" : "";
+            if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
+            container.innerHTML = pending.length === 0 ? "NO_PENDING_REQUESTS_IN_JURISDICTION" : "";
 
             pending.forEach(u => {
                 container.innerHTML += `
                     <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
                         <p><strong>USER:</strong> ${u.full_name}</p>
-                        <label>ASSIGN_DEPARTMENT:</label>
+                        <p><strong>REQUESTED_DEPT:</strong> ${u.department || 'NONE'}</p>
+                        <label>VALIDATE_DEPARTMENT:</label>
                         <select id="dept-${u.id}">
-                            <option value="ScD">Scientific (ScD)</option>
-                            <option value="MD">Medical (MD)</option>
-                            <option value="SD">Security (SD)</option>
-                            <option value="EcD">Engineering (EcD)</option>
-                            <option value="RAISA">Infosec (RAISA)</option>
-                            <option value="AD">Administrative (AD)</option>
-                            <option value="ISD">Intelligence (ISD)</option>
+                            <option value="ScD" ${u.department==='ScD'?'selected':''}>Scientific (ScD)</option>
+                            <option value="MD" ${u.department==='MD'?'selected':''}>Medical (MD)</option>
+                            <option value="SD" ${u.department==='SD'?'selected':''}>Security (SD)</option>
+                            <option value="EcD" ${u.department==='EcD'?'selected':''}>Engineering (EcD)</option>
+                            <option value="RAISA" ${u.department==='RAISA'?'selected':''}>Infosec (RAISA)</option>
+                            <option value="AD" ${u.department==='AD'?'selected':''}>Administrative (AD)</option>
+                            <option value="ISD" ${u.department==='ISD'?'selected':''}>Intelligence (ISD)</option>
                         </select>
                         <label>ASSIGN_CLEARANCE:</label>
                         <select id="lvl-${u.id}">
@@ -84,64 +124,66 @@
                             <option value="2">Level 2</option>
                             <option value="3">Level 3</option>
                             <option value="4">Level 4</option>
-                            <option value="5">Level 5</option>
                         </select>
-                        <div style="margin-top:15px;">
+                        <div style="display: flex; gap: 10px; margin-top:15px; justify-content: center; align-items: center;">
                             <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
-                            <button onclick="revokeAccess('${u.id}')">DENY</button>
+                            <button onclick="flagUser('${u.id}', 'Departmental Misalignment Reported')" class="flag-btn">FLAG_FOR_REVIEW</button>
                         </div>
                     </div>`;
             });
         }
 
         async function loadActiveUsers() {
-            const { data: active, error } = await _supabase
-                .from('profiles')
-                .select('*')
-                .eq('is_approved', true)
-                .order('full_name', { ascending: true });
+            let query = _supabase.from('profiles').select('*').eq('is_approved', true);
 
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+                query = query.eq('department', myProfile.department);
+            }
+
+            const { data: active, error } = await query.order('full_name', { ascending: true });
             const container = document.getElementById('active-list');
+            
             if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
-
-            container.innerHTML = active.length === 0 ? "NO_ACTIVE_USERS" : "";
+            container.innerHTML = active.length === 0 ? "NO_ACTIVE_USERS_IN_JURISDICTION" : "";
 
             active.forEach(u => {
                 const isMe = currentUserId === u.id;
+                let canRevoke = false;
+                if (myProfile.is_terminal_admin && !isMe) canRevoke = true;
+                if (myProfile.is_overseer && !u.is_terminal_admin && !isMe) canRevoke = true;
+                if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canRevoke = true;
+
                 container.innerHTML += `
                     <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
-                        <p><strong>${u.full_name}</strong></p>
+                        <p><strong>${u.full_name}</strong> ${u.is_terminal_admin ? '<span style="color:var(--alert-gold)">[TECH_ADMIN]</span>' : ''}</p>
                         <p>DEPT: [${u.department || 'NONE'}] | CL: [${u.clearance_level}]</p>
-                        <div style="display: flex; justify-content: center;">
-                            <button onclick="revokeAccess('${u.id}')" 
-                                    ${(isMe || (u.is_admin && !myProfile.is_overseer)) ? 'disabled' : ''}>
-                                ${isMe ? 'YOU (ROOT)' : 'REVOKE_ACCESS'}
+                        <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                            <button onclick="flagUser('${u.id}', 'Active Personnel Audit Required')" class="flag-btn-small">FLAG</button>
+                            <button onclick="revokeAccess('${u.id}')" ${!canRevoke ? 'disabled' : ''}>
+                                ${isMe ? 'YOU' : 'REVOKE'}
                             </button>
                         </div>
                     </div>`;
             });
         }
 
-        // --- LIVE SEARCH LOGIC ---
-        function filterUsers() {
-            const query = document.getElementById('user-search').value.toLowerCase();
-            const users = document.querySelectorAll('.user-item');
+        async function flagUser(userId, reason) {
+            const { error } = await _supabase.from('profiles').update({ admin_notice: reason }).eq('id', userId);
+            if (error) alert("FLAG_FAILED: " + error.message);
+            else { alert("USER_FLAGGED: NOTIFICATION SENT TO TERMINAL ADMINISTRATOR"); location.reload(); }
+        }
 
-            users.forEach(user => {
-                const name = user.getAttribute('data-name');
-                if (name.includes(query)) {
-                    user.style.display = "flex"; // Matches scp-card display
-                } else {
-                    user.style.display = "none";
-                }
-            });
+        async function clearFlag(userId) {
+            const { error } = await _supabase.from('profiles').update({ admin_notice: null }).eq('id', userId);
+            if (error) alert("CLEAR_FAILED: " + error.message);
+            else location.reload();
         }
 
         async function approveUser(userId) {
             const selectedLevel = document.getElementById(`lvl-${userId}`).value;
             const selectedDept = document.getElementById(`dept-${userId}`).value;
             const { error } = await _supabase.from('profiles').update({ 
-                is_approved: true, is_banned: false, clearance_level: parseInt(selectedLevel), department: selectedDept
+                is_approved: true, clearance_level: parseInt(selectedLevel), department: selectedDept, admin_notice: null 
             }).eq('id', userId);
             if (error) alert("UPDATE_FAILED: " + error.message);
             else location.reload();
@@ -149,12 +191,19 @@
 
         async function revokeAccess(userId) {
             if (confirm("WARNING: PERMANENTLY BAN THIS USER?")) {
-                const { error } = await _supabase.from('profiles').update({ 
-                    is_approved: false, is_banned: true 
-                }).eq('id', userId);
+                const { error } = await _supabase.from('profiles').update({ is_approved: false, is_banned: true }).eq('id', userId);
                 if (error) alert("BAN_FAILED: " + error.message);
                 else location.reload();
             }
+        }
+
+        function filterUsers() {
+            const query = document.getElementById('user-search').value.toLowerCase();
+            const users = document.querySelectorAll('.user-item');
+            users.forEach(user => {
+                const name = user.getAttribute('data-name');
+                user.style.display = name.includes(query) ? "flex" : "none";
+            });
         }
 
         window.onload = initAdmin;
