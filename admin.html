@@ -12,6 +12,11 @@
     <h1>ADMIN_TERMINAL_OVERRIDE</h1>
     <nav><a href="dashboard.html">BACK_TO_DASHBOARD</a></nav>
     
+    <section style="margin-bottom: 30px;">
+        <label>FILTER_PERSONNEL_DATABASE:</label>
+        <input type="text" id="user-search" placeholder="ENTER_NAME_OR_ID..." onkeyup="filterUsers()">
+    </section>
+
     <section>
         <h2>PENDING_ACCESS_REQUESTS</h2>
         <div id="pending-list" class="admin-grid">SCANNING_FOR_REQUESTS...</div>
@@ -26,6 +31,7 @@
 
     <script>
         let currentUserId = null;
+        let myProfile = null;
 
         async function initAdmin() {
             const { data: { user } } = await _supabase.auth.getUser();
@@ -33,8 +39,7 @@
             
             currentUserId = user.id;
 
-            // Verify Admin Status
-            const { data: me } = await _supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+            const { data: me } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
             
             if (!me || !me.is_admin) {
                 alert("ACCESS_DENIED: ADMINISTRATIVE_PRIVILEGES_REQUIRED");
@@ -42,6 +47,7 @@
                 return;
             }
 
+            myProfile = me;
             loadPending();
             loadActiveUsers();
         }
@@ -60,9 +66,8 @@
 
             pending.forEach(u => {
                 container.innerHTML += `
-                    <div class="scp-card">
+                    <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
                         <p><strong>USER:</strong> ${u.full_name}</p>
-                        
                         <label>ASSIGN_DEPARTMENT:</label>
                         <select id="dept-${u.id}">
                             <option value="ScD">Scientific (ScD)</option>
@@ -73,19 +78,17 @@
                             <option value="AD">Administrative (AD)</option>
                             <option value="ISD">Intelligence (ISD)</option>
                         </select>
-
                         <label>ASSIGN_CLEARANCE:</label>
                         <select id="lvl-${u.id}">
-                            <option value="1">Level 1 (Restricted)</option>
-                            <option value="2">Level 2 (Confidential)</option>
-                            <option value="3">Level 3 (Secret)</option>
-                            <option value="4">Level 4 (Top Secret)</option>
-                            <option value="5">Level 5 (Thaumiel/O5)</option>
+                            <option value="1">Level 1</option>
+                            <option value="2">Level 2</option>
+                            <option value="3">Level 3</option>
+                            <option value="4">Level 4</option>
+                            <option value="5">Level 5</option>
                         </select>
-
                         <div style="margin-top:15px;">
                             <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
-                            <button onclick="revokeAccess('${u.id}')" style="color: #ff4444; border-color: #440000;">DENY</button>
+                            <button onclick="revokeAccess('${u.id}')">DENY</button>
                         </div>
                     </div>`;
             });
@@ -105,51 +108,50 @@
 
             active.forEach(u => {
                 const isMe = currentUserId === u.id;
-                
                 container.innerHTML += `
-                    <div class="scp-card" style="border-style: dashed; opacity: 0.8;">
+                    <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
                         <p><strong>${u.full_name}</strong></p>
                         <p>DEPT: [${u.department || 'NONE'}] | CL: [${u.clearance_level}]</p>
-                        <button onclick="revokeAccess('${u.id}')" 
-                                style="color: #ff4444; border-color: #ff4444; width: 100%;"
-                                ${(isMe || (u.is_admin && !profile.is_overseer)) ? 'disabled' : ''}
-                            ${isMe ? 'YOU (ROOT)' : 'REVOKE_ACCESS'}
-                        </button>
+                        <div style="display: flex; justify-content: center;">
+                            <button onclick="revokeAccess('${u.id}')" 
+                                    ${(isMe || (u.is_admin && !myProfile.is_overseer)) ? 'disabled' : ''}>
+                                ${isMe ? 'YOU (ROOT)' : 'REVOKE_ACCESS'}
+                            </button>
+                        </div>
                     </div>`;
+            });
+        }
+
+        // --- LIVE SEARCH LOGIC ---
+        function filterUsers() {
+            const query = document.getElementById('user-search').value.toLowerCase();
+            const users = document.querySelectorAll('.user-item');
+
+            users.forEach(user => {
+                const name = user.getAttribute('data-name');
+                if (name.includes(query)) {
+                    user.style.display = "flex"; // Matches scp-card display
+                } else {
+                    user.style.display = "none";
+                }
             });
         }
 
         async function approveUser(userId) {
             const selectedLevel = document.getElementById(`lvl-${userId}`).value;
             const selectedDept = document.getElementById(`dept-${userId}`).value;
-
-            const { error } = await _supabase
-                .from('profiles')
-                .update({ 
-                    is_approved: true, 
-                    is_banned: false,
-                    clearance_level: parseInt(selectedLevel),
-                    department: selectedDept
-                })
-                .eq('id', userId);
-            
+            const { error } = await _supabase.from('profiles').update({ 
+                is_approved: true, is_banned: false, clearance_level: parseInt(selectedLevel), department: selectedDept
+            }).eq('id', userId);
             if (error) alert("UPDATE_FAILED: " + error.message);
-            else {
-                alert("USER_AUTHORIZED: Credentials pushed to SCiPNET main-frame.");
-                location.reload();
-            }
+            else location.reload();
         }
 
         async function revokeAccess(userId) {
             if (confirm("WARNING: PERMANENTLY BAN THIS USER?")) {
-                const { error } = await _supabase
-                    .from('profiles')
-                    .update({ 
-                        is_approved: false, 
-                        is_banned: true 
-                    })
-                    .eq('id', userId);
-                
+                const { error } = await _supabase.from('profiles').update({ 
+                    is_approved: false, is_banned: true 
+                }).eq('id', userId);
                 if (error) alert("BAN_FAILED: " + error.message);
                 else location.reload();
             }
