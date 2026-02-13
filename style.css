@@ -76,7 +76,7 @@ button, input, select, .dashboard-nav a, nav:not(.dashboard-nav) a {
     align-items: center;
     justify-content: center;
     height: 42px; 
-    padding: 4px 16px 0 16px; /* Precision Basal Shift */
+    padding: 0px 16px 0 16px; /* Precision Basal Shift */
     box-sizing: border-box;
     line-height: 1.5; 
 }
@@ -218,4 +218,4 @@ hr {
     0% { opacity: 1; }
     50% { opacity: 0.5; }
     100% { opacity: 1; }
-}
+}   
