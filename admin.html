@@ -53,7 +53,6 @@
 
             myProfile = me;
             if (me.is_terminal_admin) {
-                // We add a little padding-top here to manually nudge the header down if needed
                 const header = document.getElementById('admin-header');
                 header.innerText = "ROOT_SYSTEM_OVERRIDE";
                 header.style.paddingTop = "10px"; 
@@ -77,12 +76,16 @@
                 container.innerHTML = "";
 
                 flagged.forEach(u => {
+                    const isMe = currentUserId === u.id;
                     container.innerHTML += `
                         <div class="scp-card" style="border-color: var(--alert-gold);">
                             <p style="color: var(--alert-gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
                             <p><strong>USER:</strong> ${u.full_name}</p>
                             <p><strong>CURRENT_DEPT:</strong> ${u.department || 'NONE'}</p>
-                            <button onclick="clearFlag('${u.id}')" class="flag-resolve-btn">RESOLVE_FLAG</button>
+                            <button onclick="clearFlag('${u.id}')" 
+                                    class="flag-resolve-btn" ${isMe ? 'disabled' : ''}>
+                                ${isMe ? 'EXTERNAL_CLEARANCE_REQUIRED' : 'RESOLVE_FLAG'}
+                            </button>
                         </div>`;
                 });
             }
@@ -104,6 +107,7 @@
             container.innerHTML = pending.length === 0 ? "NO_PENDING_REQUESTS_IN_JURISDICTION" : "";
 
             pending.forEach(u => {
+                const isMe = currentUserId === u.id;
                 container.innerHTML += `
                     <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
                         <p><strong>USER:</strong> ${u.full_name}</p>
@@ -127,7 +131,10 @@
                         </select>
                         <div style="display: flex; gap: 10px; margin-top:15px; justify-content: center; align-items: center;">
                             <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
-                            <button onclick="flagUser('${u.id}', 'Departmental Misalignment Reported')" class="flag-btn">FLAG_FOR_REVIEW</button>
+                            <button onclick="flagUser('${u.id}', 'Departmental Misalignment Reported')" 
+                                    class="flag-btn" ${isMe ? 'disabled' : ''}>
+                                ${isMe ? 'CANNOT_FLAG_SELF' : 'FLAG_FOR_REVIEW'}
+                            </button>
                         </div>
                     </div>`;
             });
@@ -158,7 +165,10 @@
                         <p><strong>${u.full_name}</strong> ${u.is_terminal_admin ? '<span style="color:var(--alert-gold)">[TECH_ADMIN]</span>' : ''}</p>
                         <p>DEPT: [${u.department || 'NONE'}] | CL: [${u.clearance_level}]</p>
                         <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                            <button onclick="flagUser('${u.id}', 'Active Personnel Audit Required')" class="flag-btn-small">FLAG</button>
+                            <button onclick="flagUser('${u.id}', 'Active Personnel Audit Required')" 
+                                    class="flag-btn-small" ${isMe ? 'disabled' : ''}>
+                                ${isMe ? 'N/A' : 'FLAG'}
+                            </button>
                             <button onclick="revokeAccess('${u.id}')" ${!canRevoke ? 'disabled' : ''}>
                                 ${isMe ? 'YOU' : 'REVOKE'}
                             </button>
@@ -168,12 +178,20 @@
         }
 
         async function flagUser(userId, reason) {
+            if (userId === currentUserId) {
+                alert("CRITICAL_ERROR: ADMINISTRATIVE_UNITS_CANNOT_FLAG_THEMSELVES");
+                return;
+            }
             const { error } = await _supabase.from('profiles').update({ admin_notice: reason }).eq('id', userId);
             if (error) alert("FLAG_FAILED: " + error.message);
             else { alert("USER_FLAGGED: NOTIFICATION SENT TO TERMINAL ADMINISTRATOR"); location.reload(); }
         }
 
         async function clearFlag(userId) {
+            if (userId === currentUserId) {
+                alert("CRITICAL_ERROR: ADMINISTRATIVE_UNITS_CANNOT_UNFLAG_THEMSELVES");
+                return;
+            }
             const { error } = await _supabase.from('profiles').update({ admin_notice: null }).eq('id', userId);
             if (error) alert("CLEAR_FAILED: " + error.message);
             else location.reload();
