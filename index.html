@@ -7,6 +7,79 @@
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Bio-Metric Scanner Styles */
+        .scanner-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            padding: 10px;
+            border-top: 1px solid rgba(0, 255, 65, 0.2);
+        }
+
+        #hand-scanner {
+            position: relative;
+            width: 160px;
+            height: 200px;
+            border: 2px solid var(--terminal-green);
+            background: rgba(0, 255, 65, 0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+
+        #hand-scanner:active {
+            box-shadow: 0 0 20px var(--terminal-green);
+        }
+
+        #laser-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--terminal-green);
+            box-shadow: 0 0 15px var(--terminal-green);
+            display: none;
+            z-index: 10;
+        }
+
+        @keyframes laser-sweep {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        #progress-bar-container {
+            width: 160px;
+            height: 8px;
+            border: 1px solid var(--terminal-green);
+            margin-top: 10px;
+            background: #000;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--terminal-green);
+            transition: width 0.1s linear;
+        }
+
+        #scan-status {
+            font-size: 0.8rem;
+            margin-top: 8px;
+            height: 15px;
+            color: var(--terminal-green);
+            font-family: 'VT323', monospace;
+        }
+
+        .auth-actions {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body class="login-screen">
     <div class="terminal-box">
@@ -42,8 +115,23 @@
             </div>
         </div>
 
+        <div id="scanner-wrapper" style="display: block;">
+            <div class="scanner-container">
+                <div id="hand-scanner" onmousedown="startScan()" onmouseup="cancelScan()" onmouseleave="cancelScan()">
+                    <svg viewBox="0 0 512 512" width="100" fill="var(--terminal-green)" style="opacity: 0.7;">
+                        <path d="M448 192V80c0-26.5-21.5-48-48-48s-48 21.5-48 48v112h-32V48c0-26.5-21.5-48-48-48s-48 21.5-48 48v144h-32V80c0-26.5-21.5-48-48-48s-48 21.5-48 48v224l-44.5-44.5c-18.7-18.7-49.1-18.7-67.9 0s-18.7 49.1 0 67.9l121.5 121.5c41.3 41.3 96.6 64.1 155 64.1H400c61.9 0 112-50.1 112-112V256c0-26.5-21.5-48-48-48s-48 21.5-48 48v112h-16V192z"/>
+                    </svg>
+                    <div id="laser-line"></div>
+                </div>
+                <div id="progress-bar-container">
+                    <div id="progress-bar"></div>
+                </div>
+                <p id="scan-status">HOLD_HAND_TO_INITIALIZE_LOGIN</p>
+            </div>
+        </div>
+
         <div class="auth-actions">
-            <button id="submit-btn" onclick="handleAuth()">LOGIN</button>
+            <button id="submit-btn" onclick="handleAuth()" style="display:none;">LOGIN</button>
             <p onclick="toggleAuth()" id="toggle-text" style="cursor:pointer; text-decoration:underline;">[REQUEST_NEW_ACCESS]</p>
         </div>
         
@@ -52,15 +140,152 @@
 
     <script>
         let isRegistering = false;
+        let scanInterval;
+        let scanProgress = 0;
 
         function toggleAuth() {
             isRegistering = !isRegistering;
             document.getElementById('auth-title').innerText = isRegistering ? "ACCESS_REQUEST_FORM" : "SCiPNET_USER_LOGIN";
-            document.getElementById('submit-btn').innerText = isRegistering ? "SUBMIT_REQUEST" : "LOGIN";
             document.getElementById('reg-fields').style.display = isRegistering ? "block" : "none";
             document.getElementById('toggle-text').innerText = isRegistering ? "[BACK_TO_LOGIN]" : "[REQUEST_NEW_ACCESS]";
+            
+            // For registration, we bypass the scanner and show the button directly
+            const scanner = document.getElementById('scanner-wrapper');
+            const btn = document.getElementById('submit-btn');
+            if (isRegistering) {
+                scanner.style.display = "none";
+                btn.style.display = "block";
+                btn.innerText = "SUBMIT_REQUEST";
+            } else {
+                scanner.style.display = "block";
+                btn.style.display = "none";
+                btn.innerText = "LOGIN";
+            }
         }
 
+        // --- SCANNER LOGIC ---
+        function startScan() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            if (!email || !password) {
+                errorMsg.innerText = "ERROR: IDENTIFIER_AND_CREDENTIALS_REQUIRED";
+                return;
+            }
+            errorMsg.innerText = "";
+
+            scanProgress = 0;
+            const laser = document.getElementById('laser-line');
+            const bar = document.getElementById('progress-bar');
+            const status = document.getElementById('scan-status');
+            
+            laser.style.display = 'block';
+            laser.style.animation = 'laser-sweep 1.5s infinite alternate';
+            status.innerText = "AUTHENTICATING_BIO_SIGNATURE...";
+
+            scanInterval = setInterval(() => {
+                scanProgress += 2;
+                bar.style.width = scanProgress + "%";
+
+                if (scanProgress >= 100) {
+                    clearInterval(scanInterval);
+                    status.innerText = "IDENTITY_CONFIRMED_ACCESS_GRANTED";
+                    laser.style.animation = 'none';
+                    laser.style.top = "50%"; // Lock laser in middle on success
+                    
+                    setTimeout(() => {
+                        executeFinalAuth(); 
+                    }, 600);
+                }
+            }, 40); 
+        }
+
+        function cancelScan() {
+            clearInterval(scanInterval);
+            const laser = document.getElementById('laser-line');
+            const bar = document.getElementById('progress-bar');
+            const status = document.getElementById('scan-status');
+
+            if (scanProgress < 100) {
+                laser.style.display = 'none';
+                laser.style.animation = 'none';
+                scanProgress = 0;
+                bar.style.width = "0%";
+                status.innerText = "SCAN_ABORTED_HOLD_TO_VERIFY";
+            }
+        }
+
+        // --- AUTH LOGIC ---
+        function handleAuth() {
+            // This function is now only used for the Registration button click
+            if (isRegistering) {
+                executeFinalAuth();
+            }
+        }
+
+        async function executeFinalAuth() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+            const status = document.getElementById('scan-status');
+
+            if (isRegistering) {
+                const fullName = document.getElementById('fullname').value;
+                const deptChoice = document.getElementById('dept-choice').value;
+
+                if (!fullName || !deptChoice) {
+                    errorMsg.innerText = "ERROR: ALL_FIELDS_REQUIRED";
+                    return;
+                }
+
+                const { data, error } = await _supabase.auth.signUp({ 
+                    email, 
+                    password,
+                    options: { 
+                        data: { 
+                            full_name: fullName,
+                            department: deptChoice 
+                        } 
+                    }
+                });
+                
+                if (error) { 
+                    errorMsg.innerText = "ERROR: " + error.message; 
+                    return; 
+                }
+
+                document.querySelector('.terminal-box').innerHTML = `
+                    <h1>REQUEST_SENT</h1>
+                    <p>Verification link dispatched to: <br><strong>${email}</strong></p>
+                    <p>Departmental O5 notified of pending request.</p>
+                    <button onclick="location.reload()">RETURN_TO_LOGIN</button>
+                `;
+            } else {
+                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                
+                if (error) { 
+                    errorMsg.innerText = "ACCESS_DENIED: " + error.message;
+                    cancelScan();
+                } else { 
+                    const { data: profile } = await _supabase
+                        .from('profiles')
+                        .select('is_banned')
+                        .eq('id', data.user.id)
+                        .maybeSingle();
+
+                    if (profile && profile.is_banned) {
+                        showRedScreen(data.user.id);
+                        return;
+                    }
+
+                    await checkAndCreateProfile(data.user);
+                    window.location.href = "dashboard.html";
+                }
+            }
+        }
+
+        // (Keeping your existing helper functions below)
         function typeWriter(text, elementId, speed = 30) {
             let i = 0;
             const element = document.getElementById(elementId);
@@ -104,89 +329,15 @@
                         ACKNOWLEDGE_TERMINATION
                     </button>
                 </div>`;
-            
             typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`, "typewriter-revocation", 40);
-            
             setTimeout(() => {
                 typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
                 document.getElementById('ack-btn').style.display = "block";
             }, 2000);
-
             document.getElementById('ack-btn').onclick = async () => {
                 await _supabase.auth.signOut();
                 location.reload(); 
             };
-        }
-
-        checkInitialBanStatus();
-
-        async function handleAuth() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-msg');
-            const submitBtn = document.getElementById('submit-btn');
-
-            submitBtn.innerText = "PROCESSING...";
-            submitBtn.disabled = true;
-
-            if (isRegistering) {
-                const fullName = document.getElementById('fullname').value;
-                const deptChoice = document.getElementById('dept-choice').value;
-
-                if (!fullName || !deptChoice) {
-                    errorMsg.innerText = "ERROR: ALL_FIELDS_REQUIRED";
-                    submitBtn.innerText = "RETRY";
-                    submitBtn.disabled = false;
-                    return;
-                }
-
-                const { data, error } = await _supabase.auth.signUp({ 
-                    email, 
-                    password,
-                    options: { 
-                        data: { 
-                            full_name: fullName,
-                            department: deptChoice 
-                        } 
-                    }
-                });
-                
-                if (error) { 
-                    errorMsg.innerText = "ERROR: " + error.message; 
-                    submitBtn.innerText = "RETRY";
-                    submitBtn.disabled = false;
-                    return; 
-                }
-
-                document.querySelector('.terminal-box').innerHTML = `
-                    <h1>REQUEST_SENT</h1>
-                    <p>Verification link dispatched to: <br><strong>${email}</strong></p>
-                    <p>Departmental O5 notified of pending request.</p>
-                    <button onclick="location.reload()">RETURN_TO_LOGIN</button>
-                `;
-            } else {
-                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-                
-                if (error) { 
-                    errorMsg.innerText = "ACCESS_DENIED: " + error.message;
-                    submitBtn.innerText = "LOGIN";
-                    submitBtn.disabled = false;
-                } else { 
-                    const { data: profile } = await _supabase
-                        .from('profiles')
-                        .select('is_banned')
-                        .eq('id', data.user.id)
-                        .maybeSingle();
-
-                    if (profile && profile.is_banned) {
-                        showRedScreen(data.user.id);
-                        return;
-                    }
-
-                    await checkAndCreateProfile(data.user);
-                    window.location.href = "dashboard.html";
-                }
-            }
         }
 
         async function checkAndCreateProfile(user) {
@@ -199,7 +350,6 @@
             if (!profile) {
                 const fullName = user.user_metadata.full_name || "REDACTED_NAME";
                 const department = user.user_metadata.department || null;
-                
                 await _supabase.from('profiles').insert([{ 
                     id: user.id, 
                     full_name: fullName,
@@ -210,6 +360,8 @@
                 }]);
             }
         }
+
+        window.onload = checkInitialBanStatus;
     </script>
 </body>
 </html>
